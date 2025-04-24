@@ -10,27 +10,30 @@ const Challenges = () => {
   const [fallenChallenges, setFallenChallenges] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // API URL 설정
+  const apiUrl = import.meta.env.DEV
+    ? "http://localhost:5173"
+    : "https://idoitproto.vercel.app";
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
 
+        console.log(`인기 챌린지 URL: ${apiUrl}/api/popular-challenges`);
+        console.log(`오늘의 챌린지 URL: ${apiUrl}/api/todays-challenge`);
+        console.log(`실패 챌린지 URL: ${apiUrl}/api/fallen-challenges`);
+
         // 인기 챌린지 조회
-        const popularRes = await fetch(
-          `${import.meta.env.VITE_BASE_URL}/api/popular-challenges`
-        );
+        const popularRes = await fetch(`${apiUrl}/api/popular-challenges`);
         const popularData = await popularRes.json();
 
         // 오늘의 챌린지 조회
-        const todayRes = await fetch(
-          `${import.meta.env.VITE_BASE_URL}/api/todays-challenge`
-        );
+        const todayRes = await fetch(`${apiUrl}/api/todays-challenge`);
         const todayData = await todayRes.json();
 
         // 실패한 챌린지 조회
-        const fallenRes = await fetch(
-          `${import.meta.env.VITE_BASE_URL}/api/fallen-challenges`
-        );
+        const fallenRes = await fetch(`${apiUrl}/api/fallen-challenges`);
         const fallenData = await fallenRes.json();
 
         setPopularChallenges(popularData || []);
@@ -44,7 +47,7 @@ const Challenges = () => {
     };
 
     fetchData();
-  }, []);
+  }, [apiUrl]);
 
   // 이미지 URL 배열에서 첫 번째 이미지 추출
   const getFirstImage = (imagesJson) => {

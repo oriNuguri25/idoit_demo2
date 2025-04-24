@@ -35,6 +35,11 @@ const DetailHero = ({ challenge, challengeId }) => {
   const [images, setImages] = useState([]);
   const [comments, setComments] = useState([]);
 
+  // API URL 설정
+  const apiUrl = import.meta.env.DEV
+    ? "http://localhost:5173"
+    : "https://idoitproto.vercel.app";
+
   useEffect(() => {
     if (challenge) {
       // 이미지 데이터 처리
@@ -86,8 +91,10 @@ const DetailHero = ({ challenge, challengeId }) => {
     try {
       if (liked) return; // 이미 좋아요를 누른 경우
 
+      console.log(`좋아요 URL: ${apiUrl}/api/challenges/${challengeId}/like`);
+
       const response = await fetch(
-        `${import.meta.env.VITE_BASE_URL}/api/challenges/${challengeId}/like`,
+        `${apiUrl}/api/challenges/${challengeId}/like`,
         {
           method: "POST",
         }

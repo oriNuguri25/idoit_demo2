@@ -17,6 +17,11 @@ const RegisterForm = () => {
   const [imageFile, setImageFile] = useState(null);
   const [donationAmount, setDonationAmount] = useState(0);
 
+  // API URL 설정
+  const apiUrl = import.meta.env.DEV
+    ? "http://localhost:5173"
+    : "https://idoitproto.vercel.app";
+
   // 천 단위 쉼표 포맷팅 함수
   const formatMoney = (amount) => {
     return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -44,17 +49,16 @@ const RegisterForm = () => {
   // Supabase 스토리지에 이미지 업로드
   const uploadImageToSupabase = async (file) => {
     try {
+      console.log(`이미지 업로드 URL: ${apiUrl}/api/upload`);
+
       const filename = `${Date.now()}-${file.name}`;
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await fetch(
-        `${import.meta.env.VITE_BASE_URL}/api/upload`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      const response = await fetch(`${apiUrl}/api/upload`, {
+        method: "POST",
+        body: formData,
+      });
 
       if (!response.ok) {
         throw new Error("Failed to upload image");
@@ -106,17 +110,16 @@ const RegisterForm = () => {
           const imageUrl = await uploadImageToSupabase(imageFile);
           challengeData.images = JSON.stringify([imageUrl]);
 
+          console.log(`챌린지 생성 URL: ${apiUrl}/api/challenges`);
+
           // API 호출하여 챌린지 생성
-          const response = await fetch(
-            `${import.meta.env.VITE_BASE_URL}/api/challenges`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(challengeData),
-            }
-          );
+          const response = await fetch(`${apiUrl}/api/challenges`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(challengeData),
+          });
 
           if (!response.ok) {
             throw new Error("Failed to create challenge");
@@ -304,11 +307,6 @@ const RegisterForm = () => {
               onChange={handleMoneyChange}
             />
           </div>
-          {donationAmount > 0 && (
-            <div className="text-sm text-purple-600 font-medium">
-              Displayed as: ${formatMoney(donationAmount)}
-            </div>
-          )}
         </div>
 
         {/* 유저 이름 */}

@@ -10,13 +10,18 @@ const Detail = () => {
   const [challenge, setChallenge] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // API URL 설정
+  const apiUrl = import.meta.env.DEV
+    ? "http://localhost:5173"
+    : "https://idoitproto.vercel.app";
+
   useEffect(() => {
     const fetchChallengeDetail = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(
-          `${import.meta.env.VITE_BASE_URL}/api/challenges/${id}`
-        );
+        console.log(`챌린지 상세 URL: ${apiUrl}/api/challenges/${id}`);
+
+        const response = await fetch(`${apiUrl}/api/challenges/${id}`);
 
         if (!response.ok) {
           throw new Error("Challenge not found");
@@ -35,7 +40,7 @@ const Detail = () => {
     if (id) {
       fetchChallengeDetail();
     }
-  }, [id]);
+  }, [id, apiUrl]);
 
   if (isLoading) {
     return (
