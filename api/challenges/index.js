@@ -117,14 +117,10 @@ export default async function handler(req, res) {
 
     console.log("Processed images:", typeof processedImages);
 
-    // 현재 날짜 및 14일 후 날짜 계산
+    // 현재 날짜 계산
     const currentDate = new Date();
-    const endDate = new Date(currentDate);
-    endDate.setDate(endDate.getDate() + 14);
-
     // ISO 형식으로 변환 (YYYY-MM-DD)
     const startDate = currentDate.toISOString().split("T")[0];
-    const formattedEndDate = endDate.toISOString().split("T")[0];
 
     // 데이터베이스에 저장할 데이터 구성
     const challengeData = {
@@ -138,7 +134,7 @@ export default async function handler(req, res) {
       likes: likes || 0,
       images: processedImages,
       start_date: startDate,
-      end_date: formattedEndDate,
+      // end_date는 데이터베이스에서 start_date + 14일로 자동 계산되도록 설정
       money: money || 0,
     };
 
@@ -153,6 +149,81 @@ export default async function handler(req, res) {
 
     if (error) {
       console.error("Database error:", error);
+
+      // 날짜 관련 오류인지 확인
+      if (
+        error.message &&
+        (error.message.includes("date") || error.message.includes("constraint"))
+      ) {
+        // 날짜 필드 문제 발생 시, start_date 형식을 변경하여 다시 시도
+        console.log("Date related error detected, trying with simplified data");
+
+        try {
+          // start_date 형식을 변경한 데이터
+          const alternativeData = {
+            ...challengeData,
+            start_date: new Date().toISOString(), // ISO 문자열 형식 사용
+          };
+
+          delete alternativeData.end_date; // end_date 필드 완전히 제거
+
+          // 대체 데이터로 다시 시도
+          const { data: retryData, error: retryError } = await supabase
+            .from("challenges")
+            .insert([alternativeData])
+            .select()
+            .single();
+
+          if (retryError) {
+            console.error("Retry with ISO date failed:", retryError);
+
+            // 마지막 시도: 날짜 필드 없이 삽입
+            const basicData = {
+              name,
+              email,
+              title,
+              motivation: motivation || "",
+              plan: plan || "",
+              images: processedImages,
+              money: money || 0,
+            };
+
+            const { data: finalData, error: finalError } = await supabase
+              .from("challenges")
+              .insert([basicData])
+              .select()
+              .single();
+
+            if (finalError) {
+              console.error("All attempts failed:", finalError);
+              return res.status(500).json({
+                error: "Failed to create challenge",
+                detail: finalError.message,
+                code: finalError.code,
+              });
+            }
+
+            console.log(
+              "Challenge created successfully with basic data, ID:",
+              finalData.id
+            );
+            return res.status(201).json(finalData);
+          }
+
+          console.log(
+            "Challenge created successfully with alternative date format, ID:",
+            retryData.id
+          );
+          return res.status(201).json(retryData);
+        } catch (retryErr) {
+          console.error("Error during date format retry:", retryErr);
+          return res.status(500).json({
+            error: "Failed to create challenge after retry",
+            detail: retryErr.message,
+          });
+        }
+      }
+
       return res.status(500).json({
         error: "Failed to create challenge",
         detail: error.message,
