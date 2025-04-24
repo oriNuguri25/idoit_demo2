@@ -5,17 +5,21 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/sonner";
 import clsx from "clsx";
-import { Loader2, Upload } from "lucide-react";
-import React, { useState } from "react";
+import { Loader2 } from "lucide-react";
+import React, { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import ImageUploader from "@/components/ImageUploader";
 
 const RegisterForm = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [verificationMethod, setVerificationMethod] = useState("photo");
-  const [thumbnail, setThumbnail] = useState(null);
-  const [imageFile, setImageFile] = useState(null);
   const [donationAmount, setDonationAmount] = useState(0);
+  const [imagePreviewUrls, setImagePreviewUrls] = useState([]);
+  const [imageFiles, setImageFiles] = useState([]);
+  const [imageError, setImageError] = useState("");
+  const [formSubmitted, setFormSubmitted] = useState(false);
+  const fileInputRef = useRef(null);
 
   // API URL 설정
   const apiUrl = import.meta.env.DEV
@@ -28,47 +32,146 @@ const RegisterForm = () => {
   };
 
   // 이미지 업로드 처리
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  const onFileSelect = (e) => {
+    const files = Array.from(e.target.files);
+    const newFiles = [...imageFiles];
+    const newPreviewUrls = [...imagePreviewUrls];
 
-    // 파일 크기 제한 (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("이미지 크기는 5MB 이하여야 합니다.");
-      return;
-    }
+    files.forEach((file) => {
+      // 파일 크기 제한 (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setImageError("Image size must be less than 5MB.");
+        return;
+      }
 
-    setImageFile(file);
-    const reader = new FileReader();
-    reader.onload = () => {
-      setThumbnail(reader.result);
-    };
-    reader.readAsDataURL(file);
+      // 최대 5개 이미지로 제한
+      if (newFiles.length < 5) {
+        newFiles.push(file);
+
+        // 미리보기 URL 생성
+        const reader = new FileReader();
+        reader.onload = () => {
+          newPreviewUrls.push(reader.result);
+          setImagePreviewUrls([...newPreviewUrls]);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        setImageError("You can upload maximum 5 images.");
+      }
+    });
+
+    setImageFiles(newFiles);
+    setImageError(
+      newFiles.length === 0 ? "Please upload at least one image." : ""
+    );
   };
 
-  // Supabase 스토리지에 이미지 업로드
-  const uploadImageToSupabase = async (file) => {
+  // 이미지 제거 처리
+  const handleRemoveImage = (index) => {
+    const newFiles = [...imageFiles];
+    const newPreviewUrls = [...imagePreviewUrls];
+
+    newFiles.splice(index, 1);
+    newPreviewUrls.splice(index, 1);
+
+    setImageFiles(newFiles);
+    setImagePreviewUrls(newPreviewUrls);
+    setImageError(
+      newFiles.length === 0 ? "Please upload at least one image." : ""
+    );
+  };
+
+  // 이미지를 Base64로 변환
+  const convertImageToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (error) => reject(error);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // API를 통한 이미지 업로드 (Base64 방식)
+  const uploadImagesAsBase64 = async (files) => {
     try {
-      console.log(`이미지 업로드 URL: ${apiUrl}/api/upload`);
+      // 이미지를 Base64로 변환
+      const base64Images = await Promise.all(
+        files.map((file) => convertImageToBase64(file))
+      );
 
-      const filename = `${Date.now()}-${file.name}`;
-      const formData = new FormData();
-      formData.append("file", file);
-
+      // 이미지 업로드 API 호출
       const response = await fetch(`${apiUrl}/api/upload`, {
         method: "POST",
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          images: base64Images,
+        }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to upload image");
+        throw new Error(`Upload failed with status: ${response.status}`);
       }
 
-      const data = await response.json();
-      return data.url; // 업로드된 이미지 URL 반환
+      const result = await response.json();
+
+      // 업로드된 이미지 URL 반환
+      if (result.success && result.data && result.data.imageUrls) {
+        return result.data.imageUrls;
+      } else if (result.url) {
+        // 단일 이미지 URL 경우 (challenges/upload API 대응)
+        return [result.url];
+      }
+
+      throw new Error("No image URLs returned from server");
     } catch (error) {
-      console.error("Error uploading image:", error);
+      console.error("Error uploading images:", error);
       throw error;
+    }
+  };
+
+  // API를 통한 이미지 업로드 (FormData 방식)
+  const uploadImagesAsFormData = async (files) => {
+    try {
+      const urls = [];
+
+      // 각 파일을 개별적으로 업로드
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const response = await fetch(`${apiUrl}/api/upload`, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Upload failed with status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        if (result.url) {
+          urls.push(result.url);
+        }
+      }
+
+      return urls;
+    } catch (error) {
+      console.error("Error uploading images:", error);
+      throw error;
+    }
+  };
+
+  // 이미지 업로드 - 다양한 API 형식 지원
+  const uploadImages = async (files) => {
+    try {
+      // 먼저 FormData 방식으로 시도
+      return await uploadImagesAsFormData(files);
+    } catch (error) {
+      console.log("FormData upload failed, trying Base64 method...");
+      // 실패하면 Base64 방식으로 시도
+      return await uploadImagesAsBase64(files);
     }
   };
 
@@ -81,15 +184,17 @@ const RegisterForm = () => {
   // 폼 제출 처리
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setFormSubmitted(true);
+
+    // 이미지 validation
+    if (imageFiles.length === 0) {
+      setImageError("Please upload at least one image.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      if (!imageFile) {
-        toast.error("최소 하나의 이미지를 업로드해주세요.");
-        setIsSubmitting(false);
-        return;
-      }
-
       // 폼 데이터 수집
       const formData = new FormData(e.target);
       const challengeData = {
@@ -106,11 +211,16 @@ const RegisterForm = () => {
 
       toast.promise(
         async () => {
-          // 이미지 업로드
-          const imageUrl = await uploadImageToSupabase(imageFile);
-          challengeData.images = JSON.stringify([imageUrl]);
+          // 모든 이미지 업로드
+          console.log("Uploading images...");
+          const imageUrls = await uploadImages(imageFiles);
+          console.log("Image upload successful:", imageUrls);
 
-          console.log(`챌린지 생성 URL: ${apiUrl}/api/challenges`);
+          // 이미지 URL을 JSON 문자열로 변환하여 저장
+          challengeData.images = JSON.stringify(imageUrls);
+
+          console.log(`Challenge creation URL: ${apiUrl}/api/challenges`);
+          console.log("Challenge data:", challengeData);
 
           // API 호출하여 챌린지 생성
           const response = await fetch(`${apiUrl}/api/challenges`, {
@@ -122,10 +232,13 @@ const RegisterForm = () => {
           });
 
           if (!response.ok) {
-            throw new Error("Failed to create challenge");
+            const errorData = await response.json().catch(() => ({}));
+            console.error("Challenge creation error:", errorData);
+            throw new Error(errorData.error || "Failed to create challenge");
           }
 
           const result = await response.json();
+          console.log("Challenge created successfully:", result);
 
           // 성공 후 메인 화면으로 이동
           setTimeout(() => {
@@ -135,14 +248,14 @@ const RegisterForm = () => {
           return result;
         },
         {
-          loading: "챌린지를 생성하는 중...",
-          success: "챌린지가 성공적으로 생성되었습니다!",
-          error: "챌린지 생성에 실패했습니다. 다시 시도해주세요.",
+          loading: "Creating challenge...",
+          success: "Challenge created successfully!",
+          error: (err) => `Failed to create challenge: ${err.message}`,
         }
       );
     } catch (error) {
       console.error("Error creating challenge:", error);
-      toast.error("챌린지 생성에 실패했습니다. 다시 시도해주세요.");
+      toast.error(`Failed to create challenge: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -158,7 +271,7 @@ const RegisterForm = () => {
         onSubmit={handleSubmit}
         className="space-y-8 bg-white p-6 rounded-xl shadow-md"
       >
-        {/* 도전 제목 */}
+        {/* Challenge Title */}
         <div className="space-y-2">
           <Label htmlFor="title" className="text-lg font-medium">
             Challenge Title
@@ -172,7 +285,7 @@ const RegisterForm = () => {
           />
         </div>
 
-        {/* 도전 내용 */}
+        {/* Challenge Motivation */}
         <div className="space-y-2">
           <Label htmlFor="motivation" className="text-lg font-medium">
             Motivation for the idiot challenge
@@ -190,7 +303,7 @@ const RegisterForm = () => {
           />
         </div>
 
-        {/* 실행 계획 */}
+        {/* Execution Plan */}
         <div className="space-y-2">
           <Label htmlFor="plan" className="text-lg font-medium">
             Execution Plan
@@ -207,7 +320,7 @@ const RegisterForm = () => {
           />
         </div>
 
-        {/* 인증 방법 */}
+        {/* Verification Method */}
         <div className="space-y-2">
           <Label className="text-lg font-medium">Verification Method</Label>
           <RadioGroup
@@ -244,47 +357,17 @@ const RegisterForm = () => {
           </RadioGroup>
         </div>
 
-        {/* 사진 제출 */}
-        <div className="space-y-2">
-          <Label htmlFor="user_photo" className="text-lg font-medium">
-            Photo
-          </Label>
-          <div className="text-sm font-normal text-gray-500 -mt-2">
-            (Add a photo to boost the credibility of your challenge. At least
-            one image is required.)
-          </div>
-          <div
-            className="border-2 border-dashed border-purple-200 rounded-xl p-4 text-center cursor-pointer hover:bg-purple-50 transition-colors"
-            onClick={() => document.getElementById("user_photo")?.click()}
-          >
-            {thumbnail ? (
-              <div className="relative h-48 w-full">
-                <img
-                  src={thumbnail}
-                  alt="Thumbnail Preview"
-                  className="h-full w-full object-cover rounded-lg"
-                />
-              </div>
-            ) : (
-              <div className="py-8 flex flex-col items-center text-gray-500">
-                <Upload size={40} className="mb-2 text-purple-400" />
-                <p>Upload an image</p>
-                <p className="text-sm">(Click to select a file)</p>
-              </div>
-            )}
-            <input
-              type="file"
-              id="user_photo"
-              name="user_photo"
-              accept="image/*"
-              className="hidden"
-              onChange={handleImageUpload}
-              required
-            />
-          </div>
-        </div>
+        {/* Multi Image Uploader */}
+        <ImageUploader
+          fileInputRef={fileInputRef}
+          imagePreviewUrls={imagePreviewUrls}
+          handleRemoveImage={handleRemoveImage}
+          onFileSelect={onFileSelect}
+          formSubmitted={formSubmitted}
+          imageError={imageError}
+        />
 
-        {/* 희망 후원 금액 */}
+        {/* Desired Donation Amount */}
         <div className="space-y-2">
           <Label htmlFor="money" className="text-lg font-medium">
             Desired Donation Amount
@@ -309,7 +392,7 @@ const RegisterForm = () => {
           </div>
         </div>
 
-        {/* 유저 이름 */}
+        {/* User Name */}
         <div className="space-y-2">
           <Label htmlFor="user_name" className="text-lg font-medium">
             Your Name
@@ -323,7 +406,7 @@ const RegisterForm = () => {
           />
         </div>
 
-        {/* 유저 이메일 */}
+        {/* User Email */}
         <div className="space-y-2">
           <Label htmlFor="user_email" className="text-lg font-medium">
             Your Email Address
@@ -338,7 +421,7 @@ const RegisterForm = () => {
           />
         </div>
 
-        {/* 제출 버튼 */}
+        {/* Submit Button */}
         <Button
           type="submit"
           className="w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-900 py-6 text-lg font-bold rounded-xl"

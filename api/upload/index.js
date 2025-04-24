@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import formidable from "formidable";
+import fs from "fs";
 
 // Supabase 클라이언트 초기화 - 서버 사이드에서만 실행됨
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -36,9 +37,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Formidable 설정
-    const form = new formidable.IncomingForm();
-    form.keepExtensions = true;
+    // Formidable 설정 - 다중 파일 업로드 지원
+    const form = new formidable.IncomingForm({
+      multiples: true, // 다중 파일 업로드 활성화
+      keepExtensions: true, // 파일 확장자 유지
+      maxFileSize: 5 * 1024 * 1024, // 최대 파일 크기 5MB
+    });
 
     const parseForm = () =>
       new Promise((resolve, reject) => {
@@ -48,50 +52,106 @@ export default async function handler(req, res) {
         });
       });
 
+    // 폼 파싱
     const { files } = await parseForm();
-    const file = files.file;
+    console.log("Received files:", Object.keys(files));
 
-    if (!file) {
-      return res.status(400).json({ error: "No file uploaded" });
+    // files는 객체일 수도 있고 배열일 수도 있음
+    let fileList = [];
+
+    // 단일 'file' 필드로 여러 파일이 업로드된 경우
+    if (files.file && Array.isArray(files.file)) {
+      fileList = files.file;
+    }
+    // 단일 'file' 필드로 단일 파일이 업로드된 경우
+    else if (files.file) {
+      fileList = [files.file];
+    }
+    // 여러 'file[i]' 필드로 여러 파일이 업로드된 경우 (FormData를 수동으로 구성한 경우)
+    else {
+      fileList = Object.values(files);
     }
 
-    // 파일 확장자 확인
-    const originalFilename = file.originalFilename || "image";
-    const fileExt = originalFilename.split(".").pop().toLowerCase();
-    const allowedExts = ["jpg", "jpeg", "png", "gif"];
+    console.log(`Processing ${fileList.length} files`);
 
-    if (!allowedExts.includes(fileExt)) {
-      return res.status(400).json({ error: "Invalid file type" });
+    if (fileList.length === 0) {
+      return res.status(400).json({ error: "No files uploaded" });
     }
 
-    // 파일 읽기
-    const fs = require("fs");
-    const fileBuffer = fs.readFileSync(file.filepath);
+    // 이미지 URL 저장 배열
+    const imageUrls = [];
 
-    // 타임스탬프를 사용하여 고유한 파일 이름 생성
-    const timestamp = Date.now();
-    const safeFilename = originalFilename.replace(/[^a-zA-Z0-9]/g, "_");
-    const filename = `${timestamp}-${safeFilename}`;
+    // 모든 파일 처리
+    for (const file of fileList) {
+      try {
+        // 파일 확장자 확인
+        const originalFilename = file.originalFilename || "image";
+        const fileExt = originalFilename.split(".").pop().toLowerCase();
+        const allowedExts = ["jpg", "jpeg", "png", "gif", "webp"];
 
-    const { data, error } = await supabase.storage
-      .from("idoit-image")
-      .upload(`challenges/${filename}`, fileBuffer, {
-        contentType: `image/${fileExt === "jpg" ? "jpeg" : fileExt}`,
-        cacheControl: "3600",
-        upsert: false,
-      });
+        if (!allowedExts.includes(fileExt)) {
+          console.warn(`Skipping file with invalid extension: ${fileExt}`);
+          continue;
+        }
 
-    if (error) {
-      console.error("Supabase upload error:", error);
-      return res.status(500).json({ error: "Failed to upload image" });
+        // 파일 읽기
+        const fileBuffer = fs.readFileSync(file.filepath);
+
+        // 타임스탬프를 사용하여 고유한 파일 이름 생성
+        const timestamp = Date.now();
+        const safeFilename = originalFilename.replace(/[^a-zA-Z0-9]/g, "_");
+        const filename = `${timestamp}-${Math.random()
+          .toString(36)
+          .substring(2, 10)}-${safeFilename}`;
+
+        const { data, error } = await supabase.storage
+          .from("idoit-image")
+          .upload(`challenges/${filename}`, fileBuffer, {
+            contentType: `image/${fileExt === "jpg" ? "jpeg" : fileExt}`,
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+        if (error) {
+          console.error("Supabase upload error:", error);
+          continue; // 이 파일은 건너뛰고 다음 파일 처리
+        }
+
+        // 공개 URL 생성
+        const { data: urlData } = supabase.storage
+          .from("idoit-image")
+          .getPublicUrl(`challenges/${filename}`);
+
+        if (urlData && urlData.publicUrl) {
+          imageUrls.push(urlData.publicUrl);
+        }
+
+        // 임시 파일 삭제
+        fs.unlinkSync(file.filepath);
+      } catch (fileError) {
+        console.error(
+          `Error processing file ${file.originalFilename}:`,
+          fileError
+        );
+        // 개별 파일 오류는 무시하고 다음 파일 처리
+      }
     }
 
-    // 공개 URL 반환
-    const { data: urlData } = supabase.storage
-      .from("idoit-image")
-      .getPublicUrl(`challenges/${filename}`);
+    // 응답
+    if (imageUrls.length === 0) {
+      return res.status(500).json({ error: "Failed to upload any images" });
+    }
 
-    return res.status(200).json({ url: urlData.publicUrl });
+    // 단일 이미지와 다중 이미지 모두 처리할 수 있도록 응답 형식 통일
+    return res.status(200).json({
+      success: true,
+      message: `Successfully uploaded ${imageUrls.length} images`,
+      data: {
+        imageUrls: imageUrls,
+      },
+      // 기존 코드와의 호환성을 위해 단일 이미지 URL도 포함
+      url: imageUrls[0],
+    });
   } catch (error) {
     console.error("Server error:", error);
     return res.status(500).json({ error: "Internal server error" });
