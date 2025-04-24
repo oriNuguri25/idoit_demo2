@@ -211,46 +211,61 @@ const RegisterForm = () => {
 
       toast.promise(
         async () => {
-          // 모든 이미지 업로드
-          console.log("Uploading images...");
-          const imageUrls = await uploadImages(imageFiles);
-          console.log("Image upload successful:", imageUrls);
+          try {
+            // 모든 이미지 업로드
+            console.log("Uploading images...");
+            const imageUrls = await uploadImages(imageFiles);
+            console.log("Image upload successful:", imageUrls);
 
-          // 이미지 URL을 JSON 문자열로 변환하여 저장
-          challengeData.images = JSON.stringify(imageUrls);
+            // 이미지 URL을 챌린지 데이터에 추가
+            challengeData.images = imageUrls;
 
-          console.log(`Challenge creation URL: ${apiUrl}/api/challenges`);
-          console.log("Challenge data:", challengeData);
+            console.log(`Challenge creation URL: ${apiUrl}/api/challenges`);
+            console.log("Challenge data:", challengeData);
 
-          // API 호출하여 챌린지 생성
-          const response = await fetch(`${apiUrl}/api/challenges`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(challengeData),
-          });
+            // API 호출하여 챌린지 생성
+            const response = await fetch(`${apiUrl}/api/challenges`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(challengeData),
+            });
 
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            console.error("Challenge creation error:", errorData);
-            throw new Error(errorData.error || "Failed to create challenge");
+            const responseData = await response.json();
+
+            // 응답 검증
+            if (!response.ok) {
+              console.error("Challenge creation error:", responseData);
+              let errorMessage = "Failed to create challenge";
+
+              if (responseData.error) {
+                errorMessage = responseData.error;
+                if (responseData.detail) {
+                  errorMessage += `: ${responseData.detail}`;
+                }
+              }
+
+              throw new Error(errorMessage);
+            }
+
+            console.log("Challenge created successfully:", responseData);
+
+            // 성공 후 메인 화면으로 이동
+            setTimeout(() => {
+              navigate("/");
+            }, 1000);
+
+            return responseData;
+          } catch (innerError) {
+            console.error("Error in challenge creation flow:", innerError);
+            throw innerError;
           }
-
-          const result = await response.json();
-          console.log("Challenge created successfully:", result);
-
-          // 성공 후 메인 화면으로 이동
-          setTimeout(() => {
-            navigate("/");
-          }, 1000);
-
-          return result;
         },
         {
           loading: "Creating challenge...",
           success: "Challenge created successfully!",
-          error: (err) => `Failed to create challenge: ${err.message}`,
+          error: (err) => `${err.message || "Failed to create challenge"}`,
         }
       );
     } catch (error) {
