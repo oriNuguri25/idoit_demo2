@@ -15,6 +15,12 @@ const RegisterForm = () => {
   const [verificationMethod, setVerificationMethod] = useState("photo");
   const [thumbnail, setThumbnail] = useState(null);
   const [imageFile, setImageFile] = useState(null);
+  const [donationAmount, setDonationAmount] = useState(0);
+
+  // 천 단위 쉼표 포맷팅 함수
+  const formatMoney = (amount) => {
+    return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
 
   // 이미지 업로드 처리
   const handleImageUpload = (e) => {
@@ -62,6 +68,12 @@ const RegisterForm = () => {
     }
   };
 
+  // 금액 입력 처리
+  const handleMoneyChange = (e) => {
+    const value = parseInt(e.target.value || 0);
+    setDonationAmount(value);
+  };
+
   // 폼 제출 처리
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -85,7 +97,7 @@ const RegisterForm = () => {
         status: "In Progress",
         progress: 0,
         likes: 0,
-        money: parseInt(formData.get("money") || 0), // 희망 후원 금액 추가
+        money: donationAmount,
       };
 
       toast.promise(
@@ -112,9 +124,9 @@ const RegisterForm = () => {
 
           const result = await response.json();
 
-          // 성공 후 상세 페이지로 이동
+          // 성공 후 메인 화면으로 이동
           setTimeout(() => {
-            navigate(`/challenge/detail/${result.id}`);
+            navigate("/");
           }, 1000);
 
           return result;
@@ -289,8 +301,14 @@ const RegisterForm = () => {
               placeholder="Enter desired amount"
               className="border-purple-200 focus:border-purple-400 pl-8"
               defaultValue="0"
+              onChange={handleMoneyChange}
             />
           </div>
+          {donationAmount > 0 && (
+            <div className="text-sm text-purple-600 font-medium">
+              Displayed as: ${formatMoney(donationAmount)}
+            </div>
+          )}
         </div>
 
         {/* 유저 이름 */}

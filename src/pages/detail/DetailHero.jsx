@@ -106,6 +106,11 @@ const DetailHero = ({ challenge, challengeId }) => {
     }
   };
 
+  // 천 단위 쉼표 포맷팅 함수
+  const formatMoney = (amount) => {
+    return amount?.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") || "0";
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return "미정";
     const date = new Date(dateString);
@@ -225,6 +230,14 @@ const DetailHero = ({ challenge, challengeId }) => {
                 <DialogTitle className="text-center text-xl">
                   How big of an idiot supporter are you?
                 </DialogTitle>
+                {challenge.money > 0 && (
+                  <div className="mt-2 text-center">
+                    <p className="text-sm text-gray-600">Donation goal</p>
+                    <p className="text-lg font-bold text-purple-600">
+                      ${formatMoney(challenge.money)}
+                    </p>
+                  </div>
+                )}
               </DialogHeader>
               {!showThankYou ? (
                 <div className="space-y-4 py-4">
@@ -345,6 +358,18 @@ const DetailHero = ({ challenge, challengeId }) => {
             />
           </div>
         </div>
+
+        {/* 후원 목표 금액 */}
+        {challenge.money > 0 && (
+          <div className="mb-6 bg-purple-50 p-4 rounded-lg">
+            <h3 className="text-lg font-bold mb-2 text-purple-800">
+              Donation Goal
+            </h3>
+            <p className="text-2xl font-bold text-purple-600">
+              ${formatMoney(challenge.money)}
+            </p>
+          </div>
+        )}
 
         {/* 유저 프로필 */}
         <div className="flex items-center mb-6">

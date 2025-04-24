@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 
 const Header = () => {
   return (
@@ -8,7 +8,7 @@ const Header = () => {
         <span className="font-bold text-purple-700 text-xl">Idoit</span>
       </Link>
       <Link
-        to="/about"
+        to="#"
         className="text-purple-700 hover:text-purple-900 font-medium"
       >
         About Us
