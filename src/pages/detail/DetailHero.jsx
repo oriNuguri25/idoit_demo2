@@ -9,9 +9,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "@/components/ui/sonner";
 import clsx from "clsx";
 import {
   Calendar,
@@ -22,41 +24,112 @@ import {
   Share2,
   User,
 } from "lucide-react";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
-const DetailHero = () => {
+const DetailHero = ({ challenge, challengeId }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
+  const [showThankYou, setShowThankYou] = useState(false);
+  const [donationAmount, setDonationAmount] = useState("5");
+  const [images, setImages] = useState([]);
+  const [comments, setComments] = useState([]);
 
-  const challenge = {
-    title: "30일 운동 챌린지",
-    status: "In Progress",
-    images: ["/placeholder.svg", "/placeholder.svg"],
-    challenger: {
-      name: "사용자",
-      image: "/placeholder.svg",
-      completedChallenges: 5,
-      failedChallenges: 2,
-    },
+  useEffect(() => {
+    if (challenge) {
+      // 이미지 데이터 처리
+      try {
+        const parsedImages = JSON.parse(challenge.images || "[]");
+        setImages(parsedImages);
+      } catch (e) {
+        console.error("이미지 파싱 에러:", e);
+        setImages([]);
+      }
+
+      // 좋아요 수 설정
+      setLikeCount(challenge.likes || 0);
+
+      // 더미 댓글 데이터
+      setComments([
+        {
+          user: "응원자",
+          date: "2023.05.15",
+          content: "정말 대단한 도전이네요! 응원합니다.",
+        },
+        {
+          user: "익명",
+          date: "2023.05.14",
+          content: "저도 같은 도전을 하고 있어요. 끝까지 화이팅!",
+        },
+      ]);
+    }
+  }, [challenge]);
+
+  const handleDonate = () => {
+    // 후원 처리 로직
+    setShowThankYou(true);
+    toast.success("후원해주셔서 감사합니다!");
+    setTimeout(() => {
+      setShowThankYou(false);
+    }, 3000);
   };
 
   const prevImage = () => {
-    setCurrentImageIndex((prev) =>
-      prev === 0 ? challenge.images.length - 1 : prev - 1
-    );
+    setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
   };
 
   const nextImage = () => {
-    setCurrentImageIndex((prev) =>
-      prev === challenge.images.length - 1 ? 0 : prev + 1
-    );
+    setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
   };
 
-  const handleLike = () => {
-    setLiked((prev) => !prev);
-    setLikeCount((prev) => (liked ? prev - 1 : prev + 1));
+  const handleLike = async () => {
+    try {
+      if (liked) return; // 이미 좋아요를 누른 경우
+
+      const response = await fetch(
+        `${import.meta.env.VITE_BASE_URL}/api/challenges/${challengeId}/like`,
+        {
+          method: "POST",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to like challenge");
+      }
+
+      setLiked(true);
+      setLikeCount((prev) => prev + 1);
+      toast.success("챌린지를 응원했습니다!");
+    } catch (error) {
+      console.error("Error liking challenge:", error);
+      toast.error("응원하기 기능을 사용할 수 없습니다.");
+    }
   };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "미정";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("ko-KR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  // 남은 일수 계산
+  const calculateDaysLeft = () => {
+    if (!challenge?.end_date) return 0;
+
+    const today = new Date();
+    const endDate = new Date(challenge.end_date);
+    const diffTime = endDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 0;
+  };
+
+  if (!challenge) {
+    return <div>로딩 중...</div>;
+  }
 
   return (
     <main className="container mx-auto px-4 py-8">
@@ -70,7 +143,7 @@ const DetailHero = () => {
         <div className="mb-6">
           <div className="relative aspect-square rounded-xl overflow-hidden mb-4">
             <img
-              src={challenge.images[currentImageIndex] || "/placeholder.svg"}
+              src={images[currentImageIndex] || "/placeholder.svg"}
               alt={challenge.title}
               className="w-full h-full object-cover"
             />
@@ -78,7 +151,7 @@ const DetailHero = () => {
               {challenge.status}
             </Badge>
 
-            {challenge.images.length > 1 && (
+            {images.length > 1 && (
               <>
                 <button
                   onClick={prevImage}
@@ -99,9 +172,9 @@ const DetailHero = () => {
           </div>
 
           {/* 이미지 이동 */}
-          {challenge.images.length > 1 && (
+          {images.length > 1 && (
             <div className="flex gap-2 overflow-x-auto pb-2">
-              {challenge.images.map((image, index) => (
+              {images.map((image, index) => (
                 <button
                   key={index}
                   onClick={() => setCurrentImageIndex(index)}
@@ -142,7 +215,7 @@ const DetailHero = () => {
           </Button>
 
           <Dialog>
-            <DialogTrigger aschild>
+            <DialogTrigger asChild>
               <Button className="bg-purple-600 hover:bg-purple-700 text-white">
                 Back this Idiot
               </Button>
@@ -238,35 +311,37 @@ const DetailHero = () => {
             <Calendar size={24} className="text-purple-600 mr-3" />
             <div>
               <p className="text-sm text-gray-500">Start Date</p>
-              <p className="font-medium">{challenge.startDate}</p>
+              <p className="font-medium">{formatDate(challenge.start_date)}</p>
             </div>
           </div>
           <div className="bg-purple-50 p-4 rounded-lg flex items-center">
             <Calendar size={24} className="text-purple-600 mr-3" />
             <div>
               <p className="text-sm text-gray-500">End Date</p>
-              <p className="font-medium">{challenge.endDate}</p>
+              <p className="font-medium">{formatDate(challenge.end_date)}</p>
             </div>
           </div>
           <div className="bg-purple-50 p-4 rounded-lg flex items-center">
             <Calendar size={24} className="text-purple-600 mr-3" />
             <div>
               <p className="text-sm text-gray-500">Days Left</p>
-              <p className="font-medium">{challenge.daysLeft} days</p>
+              <p className="font-medium">{calculateDaysLeft()} days</p>
             </div>
           </div>
         </div>
 
         {/* 진행 상황 */}
         <div className="mb-8">
-          <div className="flex jusitfy-between mb-2">
+          <div className="flex justify-between mb-2">
             <span className="text-sm text-gray-500">Progress</span>
-            <span className="text-sm font-medium">{challenge.progress}%</span>
+            <span className="text-sm font-medium">
+              {challenge.progress || 0}%
+            </span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2.5">
             <div
               className="bg-purple-600 h-2.5 rounded-full"
-              style={{ width: `${challenge.progress}%` }}
+              style={{ width: `${challenge.progress || 0}%` }}
             />
           </div>
         </div>
@@ -274,26 +349,19 @@ const DetailHero = () => {
         {/* 유저 프로필 */}
         <div className="flex items-center mb-6">
           <Avatar className="h-12 w-12 mr-4">
-            <AvatarImage
-              src={challenge.challenger.image || "/placeholder.svg"}
-              alt={challenge.challenger.name}
-            />
             <AvatarFallback>
-              {challenge.challenger.name.charAt(0)}
+              {challenge.name ? challenge.name.charAt(0).toUpperCase() : "U"}
             </AvatarFallback>
           </Avatar>
           <div>
-            <h3 className="font-bold">{challenge.challenger.name}</h3>
-            <p className="text-sm text-gray-500">
-              Complete : {challenge.challenger.completedChallenges} | Fallen :{" "}
-              {challenge.challenger.failedChallenges}
-            </p>
+            <h3 className="font-bold">{challenge.name}</h3>
+            <p className="text-sm text-gray-500">Complete : 0 | Fallen : 0</p>
           </div>
         </div>
 
         {/* 탭 화면 */}
         <Tabs defaultValue="about" className="mb-12">
-          <TabsList className="grid grid-cols-3 mb-6">
+          <TabsList className="grid grid-cols-2 mb-6">
             <TabsTrigger value="about">About</TabsTrigger>
             <TabsTrigger value="comments">Comments</TabsTrigger>
           </TabsList>
@@ -332,7 +400,7 @@ const DetailHero = () => {
             </div>
 
             <div className="space-y-4">
-              {challenge.comments.map((comment, index) => (
+              {comments.map((comment, index) => (
                 <div key={index} className="border rounded-lg p-4 bg-white">
                   <div className="flex items-start gap-3">
                     <div className="flex-1">

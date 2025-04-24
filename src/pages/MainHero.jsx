@@ -24,7 +24,7 @@ const MainHero = () => {
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link to="/reigster" className="inline-block">
+          <Link to="/register" className="inline-block">
             <Button className="bg-purple-600 hover:bg-purple-700 text-white px-6 sm:px-8 py-5 sm:py-6 rounded-xl text-base sm:text-lg w-full sm:w-auto">
               Be the idiot
             </Button>
