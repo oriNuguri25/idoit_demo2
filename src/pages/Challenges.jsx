@@ -1,9 +1,11 @@
 import ChallengeCard from "@/components/ChallengeCard";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Heart, Trophy } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "@/components/ui/sonner";
+
+const CACHE_EXPIRY_TIME = 5 * 60 * 1000; // 5분 캐시 만료
 
 const Challenges = () => {
   const [popularChallenges, setPopularChallenges] = useState([]);
@@ -12,6 +14,11 @@ const Challenges = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [testApiResponse, setTestApiResponse] = useState(null);
+  const [lastFetchTime, setLastFetchTime] = useState({
+    popular: 0,
+    today: 0,
+    fallen: 0,
+  });
 
   // API URL 설정
   const apiUrl = import.meta.env.DEV
@@ -52,10 +59,148 @@ const Challenges = () => {
       }
     } catch (error) {
       console.error(`Failed to fetch ${label}:`, error);
-      toast.error(`${label} 로딩 실패: ${error.message}`);
+      toast.error(`${label} loading failed: ${error.message}`);
       return null;
     }
   };
+
+  // 캐시에서 데이터 가져오기
+  const getFromCache = (key) => {
+    const cached = localStorage.getItem(`idoit_${key}`);
+    if (!cached) return null;
+
+    try {
+      const { data, timestamp } = JSON.parse(cached);
+      const now = Date.now();
+
+      // 캐시 만료 확인
+      if (now - timestamp > CACHE_EXPIRY_TIME) {
+        localStorage.removeItem(`idoit_${key}`);
+        return null;
+      }
+
+      return data;
+    } catch (e) {
+      localStorage.removeItem(`idoit_${key}`);
+      return null;
+    }
+  };
+
+  // 캐시에 데이터 저장
+  const saveToCache = (key, data) => {
+    const cacheData = {
+      data,
+      timestamp: Date.now(),
+    };
+    localStorage.setItem(`idoit_${key}`, JSON.stringify(cacheData));
+  };
+
+  // 인기 챌린지 불러오기
+  const fetchPopularChallenges = useCallback(
+    async (force = false) => {
+      // 캐시에서 확인
+      if (!force) {
+        const cached = getFromCache("popular_challenges");
+        if (cached) {
+          console.log("Using cached popular challenges");
+          setPopularChallenges(cached);
+          return cached;
+        }
+      }
+
+      const data = await fetchWithErrorHandling(
+        `${apiUrl}/api/challenges?type=popular`,
+        "Popular challenges"
+      );
+
+      if (data) {
+        setPopularChallenges(data);
+        saveToCache("popular_challenges", data);
+        setLastFetchTime((prev) => ({ ...prev, popular: Date.now() }));
+      }
+
+      return data;
+    },
+    [apiUrl]
+  );
+
+  // 오늘의 챌린지 불러오기
+  const fetchTodaysChallenge = useCallback(
+    async (force = false) => {
+      // 캐시에서 확인
+      if (!force) {
+        const cached = getFromCache("todays_challenge");
+        if (cached) {
+          console.log("Using cached today's challenge");
+          setTodaysChallenge(cached);
+          return cached;
+        }
+      }
+
+      const data = await fetchWithErrorHandling(
+        `${apiUrl}/api/challenges?type=today`,
+        "Today's challenge"
+      );
+
+      if (data) {
+        setTodaysChallenge(data);
+        saveToCache("todays_challenge", data);
+        setLastFetchTime((prev) => ({ ...prev, today: Date.now() }));
+      }
+
+      return data;
+    },
+    [apiUrl]
+  );
+
+  // 실패한 챌린지 불러오기
+  const fetchFallenChallenges = useCallback(
+    async (force = false) => {
+      // 캐시에서 확인
+      if (!force) {
+        const cached = getFromCache("fallen_challenges");
+        if (cached) {
+          console.log("Using cached fallen challenges");
+          setFallenChallenges(cached);
+          return cached;
+        }
+      }
+
+      const data = await fetchWithErrorHandling(
+        `${apiUrl}/api/challenges?type=fallen`,
+        "Fallen challenges"
+      );
+
+      if (data) {
+        setFallenChallenges(data);
+        saveToCache("fallen_challenges", data);
+        setLastFetchTime((prev) => ({ ...prev, fallen: Date.now() }));
+      }
+
+      return data;
+    },
+    [apiUrl]
+  );
+
+  // 모든 데이터 새로고침
+  const refreshAllData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      await Promise.all([
+        fetchPopularChallenges(true),
+        fetchTodaysChallenge(true),
+        fetchFallenChallenges(true),
+      ]);
+    } catch (error) {
+      console.error("Failed to refresh data:", error);
+      setError(error.message);
+      toast.error("Failed to refresh data");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchPopularChallenges, fetchTodaysChallenge, fetchFallenChallenges]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -63,38 +208,37 @@ const Challenges = () => {
         setIsLoading(true);
         setError(null);
 
-        // 인기 챌린지 조회
-        const popularData = await fetchWithErrorHandling(
-          `${apiUrl}/api/challenges?type=popular`,
-          "인기 챌린지"
-        );
-
-        // 오늘의 챌린지 조회
-        const todayData = await fetchWithErrorHandling(
-          `${apiUrl}/api/challenges?type=today`,
-          "오늘의 챌린지"
-        );
-
-        // 실패한 챌린지 조회
-        const fallenData = await fetchWithErrorHandling(
-          `${apiUrl}/api/challenges?type=fallen`,
-          "실패한 챌린지"
-        );
-
-        setPopularChallenges(popularData || []);
-        setTodaysChallenge(todayData);
-        setFallenChallenges(fallenData || []);
+        await Promise.all([
+          fetchPopularChallenges(),
+          fetchTodaysChallenge(),
+          fetchFallenChallenges(),
+        ]);
       } catch (error) {
         console.error("Failed to fetch challenges:", error);
         setError(error.message);
-        toast.error("데이터 로딩 중 오류가 발생했습니다");
+        toast.error("An error occurred while loading data");
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchData();
-  }, [apiUrl]);
+
+    // 15분마다 데이터 갱신 (백그라운드에서)
+    const intervalId = setInterval(() => {
+      console.log("Background data refresh");
+      fetchPopularChallenges(true);
+      fetchTodaysChallenge(true);
+      fetchFallenChallenges(true);
+    }, 15 * 60 * 1000);
+
+    return () => clearInterval(intervalId);
+  }, [
+    apiUrl,
+    fetchPopularChallenges,
+    fetchTodaysChallenge,
+    fetchFallenChallenges,
+  ]);
 
   // 이미지 URL 배열에서 첫 번째 이미지 추출
   const getFirstImage = (imagesJson) => {
@@ -112,22 +256,22 @@ const Challenges = () => {
     return (
       <div className="p-4 text-center">
         <h2 className="text-xl font-bold text-red-600 mb-2">
-          데이터 로딩 오류
+          Data Loading Error
         </h2>
         <p className="text-gray-600">{error}</p>
         {testApiResponse && (
           <div className="mt-4 p-4 bg-gray-100 rounded-md text-left">
-            <h3 className="font-medium mb-2">테스트 API 응답:</h3>
+            <h3 className="font-medium mb-2">Test API Response:</h3>
             <pre className="text-xs overflow-auto max-h-48">
               {JSON.stringify(testApiResponse, null, 2)}
             </pre>
           </div>
         )}
         <button
-          onClick={() => window.location.reload()}
+          onClick={refreshAllData}
           className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
         >
-          다시 시도
+          Try Again
         </button>
       </div>
     );
@@ -135,6 +279,15 @@ const Challenges = () => {
 
   return (
     <>
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={refreshAllData}
+          className="px-3 py-1 text-sm bg-purple-100 text-purple-700 rounded-md hover:bg-purple-200 transition-colors"
+        >
+          Refresh Data
+        </button>
+      </div>
+
       <section className="mb-16">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl sm:text-2xl font-bold text-purple-800">
@@ -184,7 +337,7 @@ const Challenges = () => {
                 <div className="flex justify-between text-sm text-gray-500 mb-3">
                   <div className="flex items-center gap-1">
                     <Heart size={16} className="text-purple-400" />
-                    <span>{todaysChallenge.likes} Idiots</span>
+                    <span>{todaysChallenge.likes || 0} Idiots</span>
                   </div>
                 </div>
                 <Link

@@ -24,7 +24,8 @@ import {
   Share2,
   User,
 } from "lucide-react";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { createClient } from "@supabase/supabase-js";
 
 const DetailHero = ({ challenge, challengeId }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -37,11 +38,36 @@ const DetailHero = ({ challenge, challengeId }) => {
   const [comments, setComments] = useState([]);
   const [commentInput, setCommentInput] = useState("");
   const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const supabaseRef = useRef(null);
+  const commentsSubscriptionRef = useRef(null);
 
   // API URL 설정
   const apiUrl = import.meta.env.DEV
     ? "http://localhost:5173"
     : "https://idoitproto.vercel.app";
+
+  // Supabase 클라이언트 초기화
+  useEffect(() => {
+    // 환경 변수에서 Supabase URL과 Anon Key 가져오기
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    if (supabaseUrl && supabaseAnonKey) {
+      supabaseRef.current = createClient(supabaseUrl, supabaseAnonKey);
+      console.log("Supabase client initialized for real-time updates");
+    } else {
+      console.warn(
+        "Supabase credentials not found, real-time updates disabled"
+      );
+    }
+
+    return () => {
+      // 구독 정리
+      if (commentsSubscriptionRef.current) {
+        commentsSubscriptionRef.current.unsubscribe();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (challenge) {
@@ -50,7 +76,7 @@ const DetailHero = ({ challenge, challengeId }) => {
         const parsedImages = JSON.parse(challenge.images || "[]");
         setImages(parsedImages);
       } catch (e) {
-        console.error("이미지 파싱 에러:", e);
+        console.error("Image parsing error:", e);
         setImages([]);
       }
 
@@ -59,8 +85,42 @@ const DetailHero = ({ challenge, challengeId }) => {
 
       // 댓글 로드
       fetchComments();
+
+      // 실시간 댓글 업데이트 구독 설정
+      setupCommentsSubscription();
     }
   }, [challenge, challengeId]);
+
+  // 실시간 댓글 업데이트를 위한 Supabase 구독 설정
+  const setupCommentsSubscription = () => {
+    if (!challengeId || !supabaseRef.current) return;
+
+    // 이전 구독 해제
+    if (commentsSubscriptionRef.current) {
+      commentsSubscriptionRef.current.unsubscribe();
+    }
+
+    // 새 구독 설정
+    commentsSubscriptionRef.current = supabaseRef.current
+      .channel("comments-channel")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "comments",
+          filter: `challenge_id=eq.${challengeId}`,
+        },
+        (payload) => {
+          console.log("Real-time comment update:", payload);
+          // 변경사항이 있을 때 댓글 새로고침
+          fetchComments();
+        }
+      )
+      .subscribe((status) => {
+        console.log("Comment subscription status:", status);
+      });
+  };
 
   const fetchComments = async () => {
     if (!challengeId) return;
@@ -68,7 +128,7 @@ const DetailHero = ({ challenge, challengeId }) => {
     try {
       setIsLoadingComments(true);
       console.log(
-        `댓글 조회 URL: ${apiUrl}/api/comments?challengeId=${challengeId}`
+        `Comment fetch URL: ${apiUrl}/api/comments?challengeId=${challengeId}`
       );
 
       // 챌린지 댓글 조회
@@ -89,7 +149,7 @@ const DetailHero = ({ challenge, challengeId }) => {
     if (!commentInput.trim() || !challengeId) return;
 
     try {
-      console.log(`댓글 등록 URL: ${apiUrl}/api/comments`);
+      console.log(`Comment post URL: ${apiUrl}/api/comments`);
 
       // 댓글 등록 API 호출
       const response = await fetch(`${apiUrl}/api/comments`, {
@@ -104,18 +164,18 @@ const DetailHero = ({ challenge, challengeId }) => {
       });
 
       if (!response.ok) {
-        throw new Error("댓글 등록에 실패했습니다.");
+        throw new Error("Failed to post idiot comment.");
       }
 
       // 댓글 입력 폼 초기화
       setCommentInput("");
-      toast.success("댓글이 등록되었습니다!");
+      toast.success("Idiot Comment posted successfully!");
 
-      // 댓글 목록 새로고침
+      // 실시간 구독이 작동하지 않는 경우를 대비해 댓글 다시 불러오기
       fetchComments();
     } catch (error) {
       console.error("Error posting comment:", error);
-      toast.error("댓글 등록 중 오류가 발생했습니다.");
+      toast.error("An error occurred while posting your comment.");
     }
   };
 
@@ -125,13 +185,14 @@ const DetailHero = ({ challenge, challengeId }) => {
       let finalAmount = donationAmount;
       if (donationAmount === "custom") {
         finalAmount = customAmount;
-        if (!finalAmount || finalAmount <= 0) {
-          toast.error("유효한 후원 금액을 입력해주세요.");
+        if (!finalAmount || parseFloat(finalAmount) <= 0) {
+          toast.error("Please enter a valid donation amount.");
           return;
         }
       }
 
-      console.log(`후원 API URL: ${apiUrl}/api/support`);
+      console.log(`Support API URL: ${apiUrl}/api/support`);
+      console.log("Donation amount:", finalAmount);
 
       // API 호출하여 후원 정보 저장
       const response = await fetch(`${apiUrl}/api/support`, {
@@ -141,23 +202,25 @@ const DetailHero = ({ challenge, challengeId }) => {
         },
         body: JSON.stringify({
           challengeId,
-          amount: finalAmount,
+          amount: parseFloat(finalAmount),
         }),
       });
 
       if (!response.ok) {
-        throw new Error("후원 처리에 실패했습니다.");
+        const errorData = await response.text();
+        console.error("Support error response:", errorData);
+        throw new Error("Failed to process donation.");
       }
 
       // 성공 처리
       setShowThankYou(true);
-      toast.success("후원해주셔서 감사합니다!");
+      toast.success("Thank you for your Idiot support!");
       setTimeout(() => {
         setShowThankYou(false);
       }, 3000);
     } catch (error) {
       console.error("Error donating:", error);
-      toast.error("후원 처리 중 오류가 발생했습니다.");
+      toast.error("An error occurred while processing your donation.");
     }
   };
 
@@ -171,9 +234,9 @@ const DetailHero = ({ challenge, challengeId }) => {
 
   const handleLike = async () => {
     try {
-      if (liked) return; // 이미 좋아요를 누른 경우
+      if (liked) return; // Already liked
 
-      console.log(`좋아요 URL: ${apiUrl}/api/challenges/${challengeId}/like`);
+      console.log(`Like URL: ${apiUrl}/api/challenges/${challengeId}/like`);
 
       const response = await fetch(
         `${apiUrl}/api/challenges/${challengeId}/like`,
@@ -188,10 +251,10 @@ const DetailHero = ({ challenge, challengeId }) => {
 
       setLiked(true);
       setLikeCount((prev) => prev + 1);
-      toast.success("챌린지를 응원했습니다!");
+      toast.success("You have supported this challenge!");
     } catch (error) {
       console.error("Error liking challenge:", error);
-      toast.error("응원하기 기능을 사용할 수 없습니다.");
+      toast.error("Support feature is currently unavailable.");
     }
   };
 
@@ -201,11 +264,41 @@ const DetailHero = ({ challenge, challengeId }) => {
   };
 
   const formatDate = (dateString) => {
-    if (!dateString) return "미정";
+    if (!dateString) return "TBD";
     const date = new Date(dateString);
-    return date.toLocaleDateString("ko-KR", {
+    return date.toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
+      day: "numeric",
+    });
+  };
+
+  // 댓글 날짜 포맷팅
+  const formatCommentDate = (dateString) => {
+    if (!dateString) return "";
+
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHour = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHour / 24);
+
+    // 1일 이내: 시간 표시
+    if (diffDay < 1) {
+      if (diffHour < 1) {
+        if (diffMin < 1) {
+          return "just now";
+        }
+        return `${diffMin} min ago`;
+      }
+      return `${diffHour} hours ago`;
+    }
+    // 그 외: 전체 날짜 표시
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
       day: "numeric",
     });
   };
@@ -222,18 +315,18 @@ const DetailHero = ({ challenge, challengeId }) => {
   };
 
   if (!challenge) {
-    return <div>로딩 중...</div>;
+    return <div>Loading...</div>;
   }
 
   return (
     <main className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">
-        {/* 도전 제목 */}
+        {/* Challenge Title */}
         <h1 className="text-3xl font-bold mb-4 text-purple-800">
           {challenge.title}
         </h1>
 
-        {/* 챌린지 이미지  */}
+        {/* Challenge Image */}
         <div className="mb-6">
           <div className="relative aspect-square rounded-xl overflow-hidden mb-4">
             <img
@@ -265,7 +358,7 @@ const DetailHero = ({ challenge, challengeId }) => {
             )}
           </div>
 
-          {/* 이미지 이동 */}
+          {/* Image Navigation */}
           {images.length > 1 && (
             <div className="flex gap-2 overflow-x-auto pb-2">
               {images.map((image, index) => (
@@ -299,6 +392,7 @@ const DetailHero = ({ challenge, challengeId }) => {
               "flex items-center gap-2",
               liked ? "bg-red-50 text-red-500 border-red-200" : "text-gray-500"
             )}
+            onClick={handleLike}
           >
             <Heart
               size={20}
@@ -408,7 +502,7 @@ const DetailHero = ({ challenge, challengeId }) => {
           </Button>
         </div>
 
-        {/* 도전 정보 */}
+        {/* Challenge Info */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <div className="bg-purple-50 p-4 rounded-lg flex items-center">
             <Calendar size={24} className="text-purple-600 mr-3" />
@@ -433,7 +527,7 @@ const DetailHero = ({ challenge, challengeId }) => {
           </div>
         </div>
 
-        {/* 진행 상황 */}
+        {/* Progress */}
         <div className="mb-8">
           <div className="flex justify-between mb-2">
             <span className="text-sm text-gray-500">Progress</span>
@@ -449,7 +543,7 @@ const DetailHero = ({ challenge, challengeId }) => {
           </div>
         </div>
 
-        {/* 후원 목표 금액 */}
+        {/* Donation Goal */}
         {challenge.money > 0 && (
           <div className="mb-6 bg-purple-50 p-4 rounded-lg">
             <h3 className="text-lg font-bold mb-2 text-purple-800">
@@ -461,7 +555,7 @@ const DetailHero = ({ challenge, challengeId }) => {
           </div>
         )}
 
-        {/* 유저 프로필 */}
+        {/* User Profile */}
         <div className="flex items-center mb-6">
           <Avatar className="h-12 w-12 mr-4">
             <AvatarFallback>
@@ -474,7 +568,7 @@ const DetailHero = ({ challenge, challengeId }) => {
           </div>
         </div>
 
-        {/* 탭 화면 */}
+        {/* Tabs */}
         <Tabs defaultValue="about" className="mb-12">
           <TabsList className="grid grid-cols-2 mb-6">
             <TabsTrigger value="about">About</TabsTrigger>
@@ -503,7 +597,7 @@ const DetailHero = ({ challenge, challengeId }) => {
           <TabsContent value="comments" className="space-y-6">
             <div className="mb-6">
               <Label htmlFor="comment" className="block mb-2">
-                Leave a Comment
+                Leave a idiot Comment
               </Label>
               <div className="flex gap-2">
                 <Input
@@ -527,18 +621,18 @@ const DetailHero = ({ challenge, challengeId }) => {
 
             <div className="space-y-4">
               {isLoadingComments ? (
-                <p className="text-center text-gray-500">
-                  댓글을 불러오는 중...
-                </p>
+                <p className="text-center text-gray-500">Loading comments...</p>
               ) : comments.length > 0 ? (
-                comments.map((comment, index) => (
-                  <div key={index} className="border rounded-lg p-4 bg-white">
+                comments.map((comment) => (
+                  <div
+                    key={comment.id}
+                    className="border rounded-lg p-4 bg-white"
+                  >
                     <div className="flex items-start gap-3">
                       <div className="flex-1">
                         <div className="flex justify-between mb-1">
-                          <span className="font-medium">{comment.user}</span>
                           <span className="text-sm text-gray-500">
-                            {comment.date}
+                            {formatCommentDate(comment.created_at)}
                           </span>
                         </div>
                         <p className="text-gray-700">{comment.content}</p>
