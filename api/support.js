@@ -1,4 +1,4 @@
-import { supabase, setCorsHeaders, handleOptionsRequest } from "./utils";
+import { supabase, setCorsHeaders, handleOptionsRequest } from "./utils.js";
 
 export default async function handler(req, res) {
   // CORS 설정

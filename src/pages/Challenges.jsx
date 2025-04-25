@@ -11,6 +11,7 @@ const Challenges = () => {
   const [fallenChallenges, setFallenChallenges] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [testApiResponse, setTestApiResponse] = useState(null);
 
   // API URL 설정
   const apiUrl = import.meta.env.DEV
@@ -114,6 +115,14 @@ const Challenges = () => {
           데이터 로딩 오류
         </h2>
         <p className="text-gray-600">{error}</p>
+        {testApiResponse && (
+          <div className="mt-4 p-4 bg-gray-100 rounded-md text-left">
+            <h3 className="font-medium mb-2">테스트 API 응답:</h3>
+            <pre className="text-xs overflow-auto max-h-48">
+              {JSON.stringify(testApiResponse, null, 2)}
+            </pre>
+          </div>
+        )}
         <button
           onClick={() => window.location.reload()}
           className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"

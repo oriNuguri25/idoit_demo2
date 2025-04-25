@@ -1,4 +1,4 @@
-import { supabase, setCorsHeaders, handleOptionsRequest } from "./utils";
+import { supabase, setCorsHeaders, handleOptionsRequest } from "./utils.js";
 import formidable from "formidable";
 import fs from "fs";
 
