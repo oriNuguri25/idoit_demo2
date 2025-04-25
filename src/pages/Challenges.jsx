@@ -20,20 +20,20 @@ const Challenges = () => {
       try {
         setIsLoading(true);
 
-        console.log(`인기 챌린지 URL: ${apiUrl}/api/popular-challenges`);
-        console.log(`오늘의 챌린지 URL: ${apiUrl}/api/todays-challenge`);
-        console.log(`실패 챌린지 URL: ${apiUrl}/api/fallen-challenges`);
+        console.log(`인기 챌린지 URL: ${apiUrl}/api/challenges?type=popular`);
+        console.log(`오늘의 챌린지 URL: ${apiUrl}/api/challenges?type=today`);
+        console.log(`실패 챌린지 URL: ${apiUrl}/api/challenges?type=fallen`);
 
         // 인기 챌린지 조회
-        const popularRes = await fetch(`${apiUrl}/api/popular-challenges`);
+        const popularRes = await fetch(`${apiUrl}/api/challenges?type=popular`);
         const popularData = await popularRes.json();
 
         // 오늘의 챌린지 조회
-        const todayRes = await fetch(`${apiUrl}/api/todays-challenge`);
+        const todayRes = await fetch(`${apiUrl}/api/challenges?type=today`);
         const todayData = await todayRes.json();
 
         // 실패한 챌린지 조회
-        const fallenRes = await fetch(`${apiUrl}/api/fallen-challenges`);
+        const fallenRes = await fetch(`${apiUrl}/api/challenges?type=fallen`);
         const fallenData = await fallenRes.json();
 
         setPopularChallenges(popularData || []);

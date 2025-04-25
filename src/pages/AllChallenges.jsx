@@ -15,10 +15,10 @@ const AllChallenges = () => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        console.log(`모든 챌린지 URL: ${apiUrl}/api/all-challenges`);
+        console.log(`모든 챌린지 URL: ${apiUrl}/api/challenges`);
 
         // 모든 챌린지 조회
-        const response = await fetch(`${apiUrl}/api/all-challenges`);
+        const response = await fetch(`${apiUrl}/api/challenges`);
         const data = await response.json();
 
         setChallenges(data || []);

@@ -1,27 +1,40 @@
-import { createClient } from "@supabase/supabase-js";
-
-// Supabase 클라이언트 초기화
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
-);
+import { supabase, setCorsHeaders, handleOptionsRequest } from "./utils";
 
 export default async function handler(req, res) {
   // CORS 설정
-  res.setHeader("Access-Control-Allow-Credentials", true);
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version"
-  );
+  setCorsHeaders(res);
 
-  if (req.method === "OPTIONS") {
-    res.status(200).end();
-    return;
+  // OPTIONS 요청 처리
+  if (handleOptionsRequest(req, res)) return;
+
+  // GET 요청 - 특정 챌린지의 댓글 조회
+  if (req.method === "GET") {
+    const { challengeId } = req.query;
+
+    if (!challengeId) {
+      return res.status(400).json({ error: "챌린지 ID가 필요합니다." });
+    }
+
+    try {
+      // 특정 챌린지의 댓글 조회 (최신순)
+      const { data, error } = await supabase
+        .from("comments")
+        .select("*")
+        .eq("challenge_id", challengeId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      res.status(200).json(data);
+    } catch (error) {
+      console.error("Error fetching comments:", error);
+      res
+        .status(500)
+        .json({ error: "댓글을 가져오는 중 오류가 발생했습니다." });
+    }
   }
-
-  if (req.method === "POST") {
+  // POST 요청 - 댓글 추가
+  else if (req.method === "POST") {
     try {
       const { challengeId, content } = req.body;
 

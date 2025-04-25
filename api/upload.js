@@ -1,10 +1,6 @@
-import { createClient } from "@supabase/supabase-js";
+import { supabase, setCorsHeaders, handleOptionsRequest } from "./utils";
 import formidable from "formidable";
-
-// Supabase 클라이언트 초기화 - 서버 사이드에서만 실행됨
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+import fs from "fs";
 
 // Vercel에서 bodyParser 비활성화를 위한 설정
 export const config = {
@@ -40,22 +36,11 @@ const parseBase64Image = (base64String) => {
 };
 
 export default async function handler(req, res) {
-  // CORS 헤더 설정
-  res.setHeader("Access-Control-Allow-Credentials", true);
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET,OPTIONS,PATCH,DELETE,POST,PUT"
-  );
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version"
-  );
+  // CORS 설정
+  setCorsHeaders(res);
 
   // OPTIONS 요청 처리
-  if (req.method === "OPTIONS") {
-    return res.status(200).json({});
-  }
+  if (handleOptionsRequest(req, res)) return;
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -71,8 +56,6 @@ export default async function handler(req, res) {
     // JSON 요청 처리 (Base64 이미지)
     if (contentType.includes("application/json")) {
       console.log("Processing JSON/Base64 request");
-
-      // bodyParser 활성화가 필요합니다 (config에서 설정)
       const { images } = req.body;
 
       if (!images || !Array.isArray(images) || images.length === 0) {
@@ -199,12 +182,9 @@ export default async function handler(req, res) {
               continue;
             }
 
-            // 파일 읽기 - fs 모듈 대신 file.path 사용
+            // 파일 읽기
             let fileBuffer;
             try {
-              // Vercel 환경에서는 fs 모듈 사용 제한이 있을 수 있음
-              // file.filepath 또는 file.path에 직접 접근
-              const fs = require("fs");
               fileBuffer = fs.readFileSync(file.filepath || file.path);
             } catch (fsError) {
               console.error("File reading error:", fsError);
@@ -244,7 +224,6 @@ export default async function handler(req, res) {
 
             // 임시 파일 삭제 시도
             try {
-              const fs = require("fs");
               fs.unlinkSync(file.filepath || file.path);
             } catch (unlinkError) {
               // 파일 삭제 실패는 무시
@@ -266,7 +245,7 @@ export default async function handler(req, res) {
         });
       }
     } else {
-      // 지원되지 않는 Content-Type
+      // 다른 형식의 요청은 지원하지 않음
       return res.status(400).json({
         error: "Unsupported Content-Type",
         detail: `Expected 'multipart/form-data' or 'application/json', got '${contentType}'`,

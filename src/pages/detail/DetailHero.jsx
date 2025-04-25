@@ -68,12 +68,12 @@ const DetailHero = ({ challenge, challengeId }) => {
     try {
       setIsLoadingComments(true);
       console.log(
-        `댓글 조회 URL: ${apiUrl}/api/challenges/${challengeId}/comments`
+        `댓글 조회 URL: ${apiUrl}/api/comments?challengeId=${challengeId}`
       );
 
       // 챌린지 댓글 조회
       const response = await fetch(
-        `${apiUrl}/api/challenges/${challengeId}/comments`
+        `${apiUrl}/api/comments?challengeId=${challengeId}`
       );
       const data = await response.json();
 
@@ -100,7 +100,6 @@ const DetailHero = ({ challenge, challengeId }) => {
         body: JSON.stringify({
           challengeId,
           content: commentInput,
-          user: "익명",
         }),
       });
 
@@ -132,10 +131,10 @@ const DetailHero = ({ challenge, challengeId }) => {
         }
       }
 
-      console.log(`후원 API URL: ${apiUrl}/api/support-challenge`);
+      console.log(`후원 API URL: ${apiUrl}/api/support`);
 
       // API 호출하여 후원 정보 저장
-      const response = await fetch(`${apiUrl}/api/support-challenge`, {
+      const response = await fetch(`${apiUrl}/api/support`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

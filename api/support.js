@@ -1,25 +1,11 @@
-import { createClient } from "@supabase/supabase-js";
-
-// Supabase 클라이언트 초기화
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
-);
+import { supabase, setCorsHeaders, handleOptionsRequest } from "./utils";
 
 export default async function handler(req, res) {
   // CORS 설정
-  res.setHeader("Access-Control-Allow-Credentials", true);
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version"
-  );
+  setCorsHeaders(res);
 
-  if (req.method === "OPTIONS") {
-    res.status(200).end();
-    return;
-  }
+  // OPTIONS 요청 처리
+  if (handleOptionsRequest(req, res)) return;
 
   if (req.method === "POST") {
     try {
