@@ -7,20 +7,32 @@ export default async function handler(req, res) {
   // OPTIONS 요청 처리
   if (handleOptionsRequest(req, res)) return;
 
+  console.log("API 호출됨:", req.method, req.url);
+  console.log(
+    "Supabase 설정:",
+    !!process.env.SUPABASE_URL,
+    !!process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+
   // GET 요청 - 챌린지 조회
   if (req.method === "GET") {
     const { type, id } = req.query;
+    console.log("GET 요청 파라미터:", { type, id });
 
     try {
       // 특정 챌린지 상세 조회
       if (id) {
+        console.log("ID로 챌린지 조회:", id);
         const { data, error } = await supabase
           .from("challenges")
           .select("*")
           .eq("id", id)
           .single();
 
-        if (error) throw error;
+        if (error) {
+          console.error("ID 조회 오류:", error);
+          throw error;
+        }
         return res.status(200).json(data);
       }
 
@@ -28,6 +40,7 @@ export default async function handler(req, res) {
       switch (type) {
         // 인기 챌린지 조회 - Fallen 상태가 아닌 모든 챌린지
         case "popular":
+          console.log("인기 챌린지 조회 시작");
           const { data: popularData, error: popularError } = await supabase
             .from("challenges")
             .select("*")
@@ -35,22 +48,32 @@ export default async function handler(req, res) {
             .order("likes", { ascending: false })
             .limit(5);
 
-          if (popularError) throw popularError;
+          if (popularError) {
+            console.error("인기 챌린지 조회 오류:", popularError);
+            throw popularError;
+          }
+          console.log("인기 챌린지 조회 결과:", popularData?.length || 0);
           return res.status(200).json(popularData);
 
         // 실패한 챌린지 조회
         case "fallen":
+          console.log("실패한 챌린지 조회 시작");
           const { data: fallenData, error: fallenError } = await supabase
             .from("challenges")
             .select("*")
             .eq("status", "Fallen")
             .order("created_at", { ascending: false });
 
-          if (fallenError) throw fallenError;
+          if (fallenError) {
+            console.error("실패한 챌린지 조회 오류:", fallenError);
+            throw fallenError;
+          }
+          console.log("실패한 챌린지 조회 결과:", fallenData?.length || 0);
           return res.status(200).json(fallenData);
 
         // 오늘의 챌린지 조회 - 오늘 생성된 도전
         case "today":
+          console.log("오늘의 챌린지 조회 시작");
           // 오늘 날짜 설정 (UTC 기준)
           const today = new Date();
           today.setUTCHours(0, 0, 0, 0);
@@ -59,6 +82,13 @@ export default async function handler(req, res) {
           const tomorrow = new Date(today);
           tomorrow.setDate(tomorrow.getDate() + 1);
 
+          console.log(
+            "날짜 범위:",
+            today.toISOString(),
+            "~",
+            tomorrow.toISOString()
+          );
+
           // 오늘 생성된 챌린지 조회
           const { data: todayData, error: todayError } = await supabase
             .from("challenges")
@@ -66,39 +96,59 @@ export default async function handler(req, res) {
             .gte("created_at", today.toISOString())
             .lt("created_at", tomorrow.toISOString());
 
-          if (todayError) throw todayError;
+          if (todayError) {
+            console.error("오늘의 챌린지 조회 오류:", todayError);
+            throw todayError;
+          }
+
+          console.log("오늘 생성된 챌린지 개수:", todayData?.length || 0);
 
           if (todayData.length === 0) {
             // 오늘 생성된 챌린지가 없는 경우 가장 최근 챌린지 반환
+            console.log("오늘 생성된 챌린지 없음, 최근 챌린지 조회");
             const { data: recentData, error: recentError } = await supabase
               .from("challenges")
               .select("*")
               .order("created_at", { ascending: false })
               .limit(1);
 
-            if (recentError) throw recentError;
+            if (recentError) {
+              console.error("최근 챌린지 조회 오류:", recentError);
+              throw recentError;
+            }
+            console.log("최근 챌린지:", recentData[0]?.id || "없음");
             return res.status(200).json(recentData[0] || null);
           } else {
             // 오늘 생성된 챌린지 중 무작위로 1개 선택
             const randomIndex = Math.floor(Math.random() * todayData.length);
+            console.log(
+              "선택된 오늘의 챌린지:",
+              todayData[randomIndex]?.id || "없음"
+            );
             return res.status(200).json(todayData[randomIndex]);
           }
 
         // 기본: 모든 챌린지 조회 (최신순으로 정렬)
         default:
+          console.log("모든 챌린지 조회 시작");
           const { data: allData, error: allError } = await supabase
             .from("challenges")
             .select("*")
             .order("created_at", { ascending: false });
 
-          if (allError) throw allError;
+          if (allError) {
+            console.error("모든 챌린지 조회 오류:", allError);
+            throw allError;
+          }
+          console.log("모든 챌린지 조회 결과:", allData?.length || 0);
           return res.status(200).json(allData);
       }
     } catch (error) {
       console.error("Error fetching challenges:", error);
-      res
-        .status(500)
-        .json({ error: "챌린지를 가져오는 중 오류가 발생했습니다." });
+      return res.status(500).json({
+        error: "챌린지를 가져오는 중 오류가 발생했습니다.",
+        detail: error.message,
+      });
     }
   }
   // POST 요청 - 챌린지 생성
