@@ -224,9 +224,6 @@ const DetailHero = ({ challenge, challengeId }) => {
       toast.success(
         responseData?.message || "Thank you for your Idiot support!"
       );
-      setTimeout(() => {
-        setShowThankYou(false);
-      }, 3000);
     } catch (error) {
       console.error("후원 처리 오류:", error);
       toast.error(
@@ -403,7 +400,6 @@ const DetailHero = ({ challenge, challengeId }) => {
               "flex items-center gap-2",
               liked ? "bg-red-50 text-red-500 border-red-200" : "text-gray-500"
             )}
-            onClick={handleLike}
           >
             <Heart
               size={20}

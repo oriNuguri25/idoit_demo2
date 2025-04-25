@@ -6,7 +6,7 @@ const Footer = () => {
     <footer className="bg-purple-100 py-6 sm:py-8">
       <div className="container mx-auto px-4 text-center text-purple-700">
         <p className="mb-4">
-          © 2024 Idiot – A worldwide community cheering on idiots, with empathy
+          © 2025 Idiot – A worldwide community cheering on idiots, with empathy
           and zero fear of failure.
         </p>
         <div className="flex flex-wrap justify-center gap-4">

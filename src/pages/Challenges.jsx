@@ -279,15 +279,6 @@ const Challenges = () => {
 
   return (
     <>
-      <div className="flex justify-end mb-4">
-        <button
-          onClick={refreshAllData}
-          className="px-3 py-1 text-sm bg-purple-100 text-purple-700 rounded-md hover:bg-purple-200 transition-colors"
-        >
-          Refresh Data
-        </button>
-      </div>
-
       <section className="mb-16">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl sm:text-2xl font-bold text-purple-800">
