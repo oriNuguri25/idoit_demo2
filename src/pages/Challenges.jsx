@@ -1,6 +1,6 @@
 import ChallengeCard from "@/components/ChallengeCard";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Heart, Users } from "lucide-react";
+import { ArrowRight, Heart, Trophy, Users } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -74,7 +74,7 @@ const Challenges = () => {
             See more <ArrowRight size={16} />
           </Link>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
           {isLoading ? (
             <p>Loading popular challenges...</p>
           ) : popularChallenges.length > 0 ? (
@@ -93,7 +93,7 @@ const Challenges = () => {
             Today's Idiot Challenge
           </h2>
           <div className="bg-white rounded-xl overflow-hidden shadow-md">
-            <div className="relative h-48">
+            <div className="relative aspect-square">
               <img
                 src={getFirstImage(todaysChallenge.images)}
                 alt={todaysChallenge.title}
@@ -104,17 +104,13 @@ const Challenges = () => {
               </Badge>
             </div>
             <div className="p-4">
-              <h3 className="text-lg font-bold mb-2">
+              <h3 className="text-lg font-bold mb-2 line-clamp-2">
                 {todaysChallenge.title}
               </h3>
               <div className="flex justify-between text-sm text-gray-500 mb-3">
                 <div className="flex items-center gap-1">
-                  <Heart size={16} className="text-purple-500" />
-                  <span>{todaysChallenge.likes || 0} Cheers</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Users size={16} className="text-blue-400" />
-                  <span>1 Idiot</span>
+                  <Heart size={16} className="text-purple-400" />
+                  <span>16 Idiots</span>
                 </div>
               </div>
               <Link
@@ -124,6 +120,28 @@ const Challenges = () => {
                 View Details
               </Link>
             </div>
+          </div>
+
+          <div className="flex flex-col pt-4 md:pt-6">
+            <div className="flex items-center mb-4">
+              <Trophy className="text-yellow-500 mr-3" size={28} />
+              <h3 className="text-lg font-bold text-yellow-700">
+                Why We Selected This Idiot Challenge
+              </h3>
+            </div>
+            <p className="text-gray-700 mb-3">
+              This challenge stands out for its combination of physical
+              endurance and mental discipline. Waking up at 5 AM consistently
+              requires breaking deeply ingrained sleep habits, while swimming in
+              the ocean adds an element of courage and connection with nature.
+            </p>
+            <p className="text-gray-700">
+              The challenger has shown remarkable dedication, documenting each
+              day with authentic photos and honest reflections about the
+              struggles and small victories. Their journey reminds us that the
+              most meaningful growth often comes from the most uncomfortable
+              challenges.
+            </p>
           </div>
         </section>
       )}

@@ -32,6 +32,7 @@ const DetailHero = ({ challenge, challengeId }) => {
   const [likeCount, setLikeCount] = useState(0);
   const [showThankYou, setShowThankYou] = useState(false);
   const [donationAmount, setDonationAmount] = useState("5");
+  const [customAmount, setCustomAmount] = useState("");
   const [images, setImages] = useState([]);
   const [comments, setComments] = useState([]);
 
@@ -70,13 +71,46 @@ const DetailHero = ({ challenge, challengeId }) => {
     }
   }, [challenge]);
 
-  const handleDonate = () => {
-    // 후원 처리 로직
-    setShowThankYou(true);
-    toast.success("후원해주셔서 감사합니다!");
-    setTimeout(() => {
-      setShowThankYou(false);
-    }, 3000);
+  const handleDonate = async () => {
+    try {
+      // 후원 금액 결정
+      let finalAmount = donationAmount;
+      if (donationAmount === "custom") {
+        finalAmount = customAmount;
+        if (!finalAmount || finalAmount <= 0) {
+          toast.error("유효한 후원 금액을 입력해주세요.");
+          return;
+        }
+      }
+
+      console.log(`후원 API URL: ${apiUrl}/api/support-challenge`);
+
+      // API 호출하여 후원 정보 저장
+      const response = await fetch(`${apiUrl}/api/support-challenge`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          challengeId,
+          amount: finalAmount,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("후원 처리에 실패했습니다.");
+      }
+
+      // 성공 처리
+      setShowThankYou(true);
+      toast.success("후원해주셔서 감사합니다!");
+      setTimeout(() => {
+        setShowThankYou(false);
+      }, 3000);
+    } catch (error) {
+      console.error("Error donating:", error);
+      toast.error("후원 처리 중 오류가 발생했습니다.");
+    }
   };
 
   const prevImage = () => {
@@ -284,13 +318,15 @@ const DetailHero = ({ challenge, challengeId }) => {
 
                   {donationAmount === "custom" && (
                     <div className="mt-4">
-                      <Label htmlFor="custom-amount">Enter Amount {$}</Label>
+                      <Label htmlFor="custom-amount">Enter Amount ($)</Label>
                       <Input
                         id="custom-amount"
                         type="number"
                         min="1"
                         placeholder="Enter support amount"
                         className="mt-1"
+                        value={customAmount}
+                        onChange={(e) => setCustomAmount(e.target.value)}
                       />
                     </div>
                   )}

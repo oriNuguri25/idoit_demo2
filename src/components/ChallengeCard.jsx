@@ -10,12 +10,23 @@ function ChallengeCard({ challenge }) {
     Fallen: "bg-yellow-500",
   };
 
+  // 이미지 URL 배열에서 첫 번째 이미지 추출
+  const getFirstImage = (imagesJson) => {
+    try {
+      if (!imagesJson) return "/placeholder.svg";
+      const images = JSON.parse(imagesJson);
+      return images[0] || "/placeholder.svg";
+    } catch (e) {
+      return "/placeholder.svg";
+    }
+  };
+
   return (
     <Link to={`/challenge/detail/${challenge.id}`} className="block">
       <div className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow">
         <div className="relative h-48">
           <img
-            src={challenge.image}
+            src={getFirstImage(challenge.images)}
             alt={challenge.title}
             className="w-full h-full object-cover"
           />
