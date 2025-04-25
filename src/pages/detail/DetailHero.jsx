@@ -35,6 +35,8 @@ const DetailHero = ({ challenge, challengeId }) => {
   const [customAmount, setCustomAmount] = useState("");
   const [images, setImages] = useState([]);
   const [comments, setComments] = useState([]);
+  const [commentInput, setCommentInput] = useState("");
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
 
   // API URL 설정
   const apiUrl = import.meta.env.DEV
@@ -55,21 +57,68 @@ const DetailHero = ({ challenge, challengeId }) => {
       // 좋아요 수 설정
       setLikeCount(challenge.likes || 0);
 
-      // 더미 댓글 데이터
-      setComments([
-        {
-          user: "응원자",
-          date: "2023.05.15",
-          content: "정말 대단한 도전이네요! 응원합니다.",
-        },
-        {
-          user: "익명",
-          date: "2023.05.14",
-          content: "저도 같은 도전을 하고 있어요. 끝까지 화이팅!",
-        },
-      ]);
+      // 댓글 로드
+      fetchComments();
     }
-  }, [challenge]);
+  }, [challenge, challengeId]);
+
+  const fetchComments = async () => {
+    if (!challengeId) return;
+
+    try {
+      setIsLoadingComments(true);
+      console.log(
+        `댓글 조회 URL: ${apiUrl}/api/challenges/${challengeId}/comments`
+      );
+
+      // 챌린지 댓글 조회
+      const response = await fetch(
+        `${apiUrl}/api/challenges/${challengeId}/comments`
+      );
+      const data = await response.json();
+
+      setComments(data || []);
+    } catch (error) {
+      console.error("Failed to fetch comments:", error);
+    } finally {
+      setIsLoadingComments(false);
+    }
+  };
+
+  const handleCommentSubmit = async () => {
+    if (!commentInput.trim() || !challengeId) return;
+
+    try {
+      console.log(`댓글 등록 URL: ${apiUrl}/api/comments`);
+
+      // 댓글 등록 API 호출
+      const response = await fetch(`${apiUrl}/api/comments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          challengeId,
+          content: commentInput,
+          user: "익명",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("댓글 등록에 실패했습니다.");
+      }
+
+      // 댓글 입력 폼 초기화
+      setCommentInput("");
+      toast.success("댓글이 등록되었습니다!");
+
+      // 댓글 목록 새로고침
+      fetchComments();
+    } catch (error) {
+      console.error("Error posting comment:", error);
+      toast.error("댓글 등록 중 오류가 발생했습니다.");
+    }
+  };
 
   const handleDonate = async () => {
     try {
@@ -251,7 +300,6 @@ const DetailHero = ({ challenge, challengeId }) => {
               "flex items-center gap-2",
               liked ? "bg-red-50 text-red-500 border-red-200" : "text-gray-500"
             )}
-            onClick={handleLike}
           >
             <Heart
               size={20}
@@ -459,8 +507,19 @@ const DetailHero = ({ challenge, challengeId }) => {
                 Leave a Comment
               </Label>
               <div className="flex gap-2">
-                <Input id="comment" placeholder="Write your comment" />
-                <Button>
+                <Input
+                  id="comment"
+                  placeholder="Write your comment"
+                  value={commentInput}
+                  onChange={(e) => setCommentInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleCommentSubmit();
+                    }
+                  }}
+                />
+                <Button onClick={handleCommentSubmit}>
                   <MessageCircle size={18} className="mr-2" />
                   Comment
                 </Button>
@@ -468,21 +527,33 @@ const DetailHero = ({ challenge, challengeId }) => {
             </div>
 
             <div className="space-y-4">
-              {comments.map((comment, index) => (
-                <div key={index} className="border rounded-lg p-4 bg-white">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-1">
-                      <div className="flex justify-between mb-1">
-                        <span className="font-medium">{comment.user}</span>
-                        <span className="text-sm text-gray-500">
-                          {comment.date}
-                        </span>
+              {isLoadingComments ? (
+                <p className="text-center text-gray-500">
+                  댓글을 불러오는 중...
+                </p>
+              ) : comments.length > 0 ? (
+                comments.map((comment, index) => (
+                  <div key={index} className="border rounded-lg p-4 bg-white">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-1">
+                        <div className="flex justify-between mb-1">
+                          <span className="font-medium">{comment.user}</span>
+                          <span className="text-sm text-gray-500">
+                            {comment.date}
+                          </span>
+                        </div>
+                        <p className="text-gray-700">{comment.content}</p>
                       </div>
-                      <p className="text-gray-700">{comment.content}</p>
                     </div>
                   </div>
+                ))
+              ) : (
+                <div className="text-center p-6 bg-gray-50 rounded-lg">
+                  <p className="text-gray-600">
+                    Be the first idiot to leave a thought!
+                  </p>
                 </div>
-              ))}
+              )}
             </div>
           </TabsContent>
         </Tabs>

@@ -68,7 +68,7 @@ const Challenges = () => {
             Popular Idiot Challenges
           </h2>
           <Link
-            to="/challenges"
+            to="/all-challenges"
             className="text-purple-600 hover:text-purple-800 flex items-center gap-1"
           >
             See more <ArrowRight size={16} />
@@ -92,56 +92,59 @@ const Challenges = () => {
           <h2 className="text-xl sm:text-2xl font-bold text-yellow-600 mb-4">
             Today's Idiot Challenge
           </h2>
-          <div className="bg-white rounded-xl overflow-hidden shadow-md">
-            <div className="relative aspect-square">
-              <img
-                src={getFirstImage(todaysChallenge.images)}
-                alt={todaysChallenge.title}
-                className="w-full h-full object-cover"
-              />
-              <Badge className="absolute top-4 right-4 bg-yellow-500">
-                {todaysChallenge.status}
-              </Badge>
-            </div>
-            <div className="p-4">
-              <h3 className="text-lg font-bold mb-2 line-clamp-2">
-                {todaysChallenge.title}
-              </h3>
-              <div className="flex justify-between text-sm text-gray-500 mb-3">
-                <div className="flex items-center gap-1">
-                  <Heart size={16} className="text-purple-400" />
-                  <span>16 Idiots</span>
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white rounded-xl overflow-hidden shadow-md">
+              <div className="relative aspect-square">
+                <img
+                  src={getFirstImage(todaysChallenge.images)}
+                  alt={todaysChallenge.title}
+                  className="w-full h-full object-cover"
+                />
+                <Badge className="absolute top-4 right-4 bg-yellow-500">
+                  {todaysChallenge.status}
+                </Badge>
               </div>
-              <Link
-                to={`/challenge/detail/${todaysChallenge.id}`}
-                className="block text-center bg-yellow-100 hover:bg-yellow-200 text-yellow-700 py-2 rounded-lg font-medium"
-              >
-                View Details
-              </Link>
+              <div className="p-4">
+                <h3 className="text-lg font-bold mb-2 line-clamp-2">
+                  {todaysChallenge.title}
+                </h3>
+                <div className="flex justify-between text-sm text-gray-500 mb-3">
+                  <div className="flex items-center gap-1">
+                    <Heart size={16} className="text-purple-400" />
+                    <span>16 Idiots</span>
+                  </div>
+                </div>
+                <Link
+                  to={`/challenge/detail/${todaysChallenge.id}`}
+                  className="block text-center bg-yellow-100 hover:bg-yellow-200 text-yellow-700 py-2 rounded-lg font-medium"
+                >
+                  View Details
+                </Link>
+              </div>
             </div>
-          </div>
 
-          <div className="flex flex-col pt-4 md:pt-6">
-            <div className="flex items-center mb-4">
-              <Trophy className="text-yellow-500 mr-3" size={28} />
-              <h3 className="text-lg font-bold text-yellow-700">
-                Why We Selected This Idiot Challenge
-              </h3>
+            <div className="flex flex-col pt-4 md:pt-6">
+              <div className="flex items-center mb-4">
+                <Trophy className="text-yellow-500 mr-3" size={28} />
+                <h3 className="text-lg font-bold text-yellow-700">
+                  Why We Selected This Idiot Challenge
+                </h3>
+              </div>
+              <p className="text-gray-700 mb-3">
+                This challenge stands out for its combination of physical
+                endurance and mental discipline. Waking up at 5 AM consistently
+                requires breaking deeply ingrained sleep habits, while swimming
+                in the ocean adds an element of courage and connection with
+                nature.
+              </p>
+              <p className="text-gray-700">
+                The challenger has shown remarkable dedication, documenting each
+                day with authentic photos and honest reflections about the
+                struggles and small victories. Their journey reminds us that the
+                most meaningful growth often comes from the most uncomfortable
+                challenges.
+              </p>
             </div>
-            <p className="text-gray-700 mb-3">
-              This challenge stands out for its combination of physical
-              endurance and mental discipline. Waking up at 5 AM consistently
-              requires breaking deeply ingrained sleep habits, while swimming in
-              the ocean adds an element of courage and connection with nature.
-            </p>
-            <p className="text-gray-700">
-              The challenger has shown remarkable dedication, documenting each
-              day with authentic photos and honest reflections about the
-              struggles and small victories. Their journey reminds us that the
-              most meaningful growth often comes from the most uncomfortable
-              challenges.
-            </p>
           </div>
         </section>
       )}
@@ -152,7 +155,7 @@ const Challenges = () => {
             Fallen Idiot Challenges
           </h2>
           <Link
-            to="/challenge/fallen"
+            to="/all-challenges"
             className="text-purple-600 hover:text-purple-800 flex items-center gap-1"
           >
             See more <ArrowRight size={16} />
