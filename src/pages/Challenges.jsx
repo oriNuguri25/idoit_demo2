@@ -1,6 +1,6 @@
 import ChallengeCard from "@/components/ChallengeCard";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Heart, Trophy, Users } from "lucide-react";
+import { ArrowRight, Heart, Trophy } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 

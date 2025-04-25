@@ -26,13 +26,14 @@ export default async function handler(req, res) {
 
       // 타입에 따른 챌린지 조회
       switch (type) {
-        // 인기 챌린지 조회
+        // 인기 챌린지 조회 - Fallen 상태가 아닌 모든 챌린지
         case "popular":
           const { data: popularData, error: popularError } = await supabase
             .from("challenges")
             .select("*")
+            .neq("status", "Fallen")
             .order("likes", { ascending: false })
-            .limit(3);
+            .limit(5);
 
           if (popularError) throw popularError;
           return res.status(200).json(popularData);
@@ -48,7 +49,7 @@ export default async function handler(req, res) {
           if (fallenError) throw fallenError;
           return res.status(200).json(fallenData);
 
-        // 오늘의 챌린지 조회
+        // 오늘의 챌린지 조회 - 오늘 생성된 도전
         case "today":
           // 오늘 날짜 설정 (UTC 기준)
           const today = new Date();
