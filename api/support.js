@@ -30,8 +30,8 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "후원 금액은 필수입니다." });
       }
 
-      // 금액이 유효한지 확인
-      const parsedAmount = parseFloat(amount);
+      // 금액이 유효한지 확인 (int4 타입으로 변환)
+      const parsedAmount = Math.floor(parseFloat(amount));
       if (isNaN(parsedAmount) || parsedAmount <= 0) {
         console.error("Support API 오류: 유효하지 않은 금액", amount);
         return res.status(400).json({ error: "유효한 후원 금액이 아닙니다." });
@@ -47,30 +47,44 @@ export default async function handler(req, res) {
         `Support API: ${challengeId}에 ${parsedAmount}$ 후원 처리 중`
       );
 
-      // 후원 정보를 support 테이블에 저장
-      const { data, error } = await supabase
-        .from("support")
-        .insert([
-          {
-            challenge_id: challengeId,
-            amount: parsedAmount,
-          },
-        ])
-        .select();
+      // 테이블 구조에 맞춘 데이터 구성
+      const supportData = {
+        challenge_id: challengeId, // UUID 타입
+        amount: parsedAmount, // int4 타입
+        // created_at은 데이터베이스에서 자동 생성
+      };
 
-      if (error) {
-        console.error("Supabase support 테이블 삽입 오류:", error);
-        throw error;
+      console.log("삽입할 데이터:", supportData);
+
+      // 후원 정보를 support 테이블에 저장 (try-catch로 추가 보호)
+      try {
+        const { data, error } = await supabase
+          .from("support")
+          .insert([supportData]);
+
+        if (error) {
+          console.error("Supabase 삽입 오류:", error);
+          throw new Error(
+            `후원 정보 저장 실패: ${error.message || "알 수 없는 오류"}`
+          );
+        }
+
+        console.log("Support API: 후원 정보 저장 성공");
+        return res.status(200).json({
+          success: true,
+          message: "후원이 성공적으로 처리되었습니다.",
+        });
+      } catch (dbError) {
+        console.error("데이터베이스 작업 오류:", dbError);
+        throw dbError;
       }
-
-      console.log("Support API: 후원 정보 저장 성공", data);
-      res.status(200).json({ success: true, data });
     } catch (error) {
-      console.error("Support API 치명적 오류:", error.message, error.stack);
+      console.error("Support API 치명적 오류:", error.message);
+      console.error("오류 세부 정보:", error);
+
       res.status(500).json({
         error: "후원 정보를 저장하는 중 오류가 발생했습니다.",
         detail: error.message,
-        stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
       });
     }
   } else {

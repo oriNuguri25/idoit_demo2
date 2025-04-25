@@ -206,21 +206,32 @@ const DetailHero = ({ challenge, challengeId }) => {
         }),
       });
 
+      let responseData;
+      try {
+        responseData = await response.json();
+      } catch (e) {
+        responseData = { error: "응답을 처리할 수 없습니다." };
+      }
+
+      console.log("Support API 응답:", responseData);
+
       if (!response.ok) {
-        const errorData = await response.text();
-        console.error("Support error response:", errorData);
-        throw new Error("Failed to process donation.");
+        throw new Error(responseData?.error || "Failed to process donation.");
       }
 
       // 성공 처리
       setShowThankYou(true);
-      toast.success("Thank you for your Idiot support!");
+      toast.success(
+        responseData?.message || "Thank you for your Idiot support!"
+      );
       setTimeout(() => {
         setShowThankYou(false);
       }, 3000);
     } catch (error) {
-      console.error("Error donating:", error);
-      toast.error("An error occurred while processing your donation.");
+      console.error("후원 처리 오류:", error);
+      toast.error(
+        error.message || "An error occurred while processing your donation."
+      );
     }
   };
 
