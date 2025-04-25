@@ -3,44 +3,90 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Heart, Trophy } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { toast } from "@/components/ui/sonner";
 
 const Challenges = () => {
   const [popularChallenges, setPopularChallenges] = useState([]);
   const [todaysChallenge, setTodaysChallenge] = useState(null);
   const [fallenChallenges, setFallenChallenges] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // API URL 설정
   const apiUrl = import.meta.env.DEV
     ? "http://localhost:5173"
     : "https://idoitproto.vercel.app";
 
+  // 향상된 fetch 함수
+  const fetchWithErrorHandling = async (url, label) => {
+    try {
+      console.log(`Fetching ${label} from: ${url}`);
+      const response = await fetch(url);
+
+      // 응답 상태 로깅
+      console.log(`${label} response status:`, response.status);
+
+      // 성공이 아닌 경우 자세한 정보 로깅
+      if (!response.ok) {
+        const responseText = await response.text();
+        console.error(`${label} error response:`, responseText);
+        throw new Error(
+          `${response.status} ${response.statusText}: ${responseText.substring(
+            0,
+            100
+          )}...`
+        );
+      }
+
+      // 응답을 텍스트로 받아서 유효한 JSON인지 확인
+      const text = await response.text();
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        console.error(
+          `Invalid JSON in ${label} response:`,
+          text.substring(0, 100)
+        );
+        throw new Error(`Invalid JSON response for ${label}`);
+      }
+    } catch (error) {
+      console.error(`Failed to fetch ${label}:`, error);
+      toast.error(`${label} 로딩 실패: ${error.message}`);
+      return null;
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-
-        console.log(`인기 챌린지 URL: ${apiUrl}/api/challenges?type=popular`);
-        console.log(`오늘의 챌린지 URL: ${apiUrl}/api/challenges?type=today`);
-        console.log(`실패 챌린지 URL: ${apiUrl}/api/challenges?type=fallen`);
+        setError(null);
 
         // 인기 챌린지 조회
-        const popularRes = await fetch(`${apiUrl}/api/challenges?type=popular`);
-        const popularData = await popularRes.json();
+        const popularData = await fetchWithErrorHandling(
+          `${apiUrl}/api/challenges?type=popular`,
+          "인기 챌린지"
+        );
 
         // 오늘의 챌린지 조회
-        const todayRes = await fetch(`${apiUrl}/api/challenges?type=today`);
-        const todayData = await todayRes.json();
+        const todayData = await fetchWithErrorHandling(
+          `${apiUrl}/api/challenges?type=today`,
+          "오늘의 챌린지"
+        );
 
         // 실패한 챌린지 조회
-        const fallenRes = await fetch(`${apiUrl}/api/challenges?type=fallen`);
-        const fallenData = await fallenRes.json();
+        const fallenData = await fetchWithErrorHandling(
+          `${apiUrl}/api/challenges?type=fallen`,
+          "실패한 챌린지"
+        );
 
         setPopularChallenges(popularData || []);
-        setTodaysChallenge(todayData || null);
+        setTodaysChallenge(todayData);
         setFallenChallenges(fallenData || []);
       } catch (error) {
         console.error("Failed to fetch challenges:", error);
+        setError(error.message);
+        toast.error("데이터 로딩 중 오류가 발생했습니다");
       } finally {
         setIsLoading(false);
       }
@@ -59,6 +105,24 @@ const Challenges = () => {
       return "/placeholder.svg";
     }
   };
+
+  // 오류 표시
+  if (error) {
+    return (
+      <div className="p-4 text-center">
+        <h2 className="text-xl font-bold text-red-600 mb-2">
+          데이터 로딩 오류
+        </h2>
+        <p className="text-gray-600">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+        >
+          다시 시도
+        </button>
+      </div>
+    );
+  }
 
   return (
     <>
