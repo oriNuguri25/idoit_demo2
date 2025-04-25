@@ -3,11 +3,11 @@
   "routes": [
     {
       "src": "/api/challenges",
-      "dest": "/api/challenges/index.js"
+      "dest": "/api/challenges.js"
     },
     {
       "src": "/api/upload",
-      "dest": "/api/upload/index.js"
+      "dest": "/api/upload.js"
     }
   ]
 }
