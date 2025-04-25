@@ -184,7 +184,7 @@ const Challenges = () => {
                 <div className="flex justify-between text-sm text-gray-500 mb-3">
                   <div className="flex items-center gap-1">
                     <Heart size={16} className="text-purple-400" />
-                    <span>16 Idiots</span>
+                    <span>{todaysChallenge.likes} Idiots</span>
                   </div>
                 </div>
                 <Link

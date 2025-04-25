@@ -6,8 +6,16 @@
       "dest": "/api/challenges.js"
     },
     {
+      "src": "/api/challenges/(.*)",
+      "dest": "/api/challenges.js?id=$1"
+    },
+    {
       "src": "/api/upload",
       "dest": "/api/upload.js"
+    },
+    {
+      "src": "/api/test",
+      "dest": "/api/test.js"
     }
   ]
 }
