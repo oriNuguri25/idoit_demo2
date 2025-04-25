@@ -76,7 +76,6 @@ export default async function handler(req, res) {
         const insertResult = {
           success: true,
           data: {
-            id: crypto.randomUUID(), // 클라이언트 측에서 생성된 UUID
             ...supportData,
             created_at: new Date().toISOString(),
           },
@@ -85,9 +84,9 @@ export default async function handler(req, res) {
         // 실제 Supabase 쿼리 시도 (실패해도 클라이언트에 오류 반환하지 않음)
         try {
           const { error: insertError } = await supabase
-            .from("support")
+            .from("supports")
             .insert([supportData])
-            .select("id, challenge_id, amount");
+            .select("challenge_id, amount");
 
           if (insertError) {
             console.error("Supabase 삽입 실패 (무시됨):", insertError);
