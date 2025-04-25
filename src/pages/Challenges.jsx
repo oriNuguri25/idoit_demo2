@@ -322,9 +322,12 @@ const Challenges = () => {
                 </Badge>
               </div>
               <div className="p-4">
-                <h3 className="text-lg font-bold mb-2 line-clamp-2">
+                <h3 className="text-lg font-bold mb-1 line-clamp-2">
                   {todaysChallenge.title}
                 </h3>
+                <p className="text-sm text-gray-600 mb-2">
+                  {todaysChallenge.name}
+                </p>
                 <div className="flex justify-between text-sm text-gray-500 mb-3">
                   <div className="flex items-center gap-1">
                     <Heart size={16} className="text-purple-400" />

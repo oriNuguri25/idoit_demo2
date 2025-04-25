@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import React from "react";
 import { Link } from "react-router";
 import Challenges from "./Challenges";
+import MainFeature from "./MainFeature";
 
 const MainHero = () => {
   return (
@@ -31,6 +32,7 @@ const MainHero = () => {
           </Link>
         </div>
       </section>
+      <MainFeature />
       <Challenges />
     </main>
   );
