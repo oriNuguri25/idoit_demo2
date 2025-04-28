@@ -45,7 +45,7 @@ const MainFeature = () => {
               <Rocket className="h-8 w-8 text-white" strokeWidth={1.5} />
             </div>
           </div>
-          <h3 className="text-lg font-bold mb-3 text-mint-700">
+          <h3 className="text-lg font-bold mb-3 text-green-700">
             It's okay to fail
           </h3>
           <p className="text-gray-600 mb-4">

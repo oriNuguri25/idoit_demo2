@@ -240,31 +240,31 @@ const DetailHero = ({ challenge, challengeId }) => {
     setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
   };
 
-  const handleLike = async () => {
-    try {
-      if (liked) return; // Already liked
+  // const handleLike = async () => {
+  //   try {
+  //     if (liked) return; // Already liked
 
-      console.log(`Like URL: ${apiUrl}/api/challenges/${challengeId}/like`);
+  //     console.log(`Like URL: ${apiUrl}/api/challenges/${challengeId}/like`);
 
-      const response = await fetch(
-        `${apiUrl}/api/challenges/${challengeId}/like`,
-        {
-          method: "POST",
-        }
-      );
+  //     const response = await fetch(
+  //       `${apiUrl}/api/challenges/${challengeId}/like`,
+  //       {
+  //         method: "POST",
+  //       }
+  //     );
 
-      if (!response.ok) {
-        throw new Error("Failed to like challenge");
-      }
+  //     if (!response.ok) {
+  //       throw new Error("Failed to like challenge");
+  //     }
 
-      setLiked(true);
-      setLikeCount((prev) => prev + 1);
-      toast.success("You have supported this challenge!");
-    } catch (error) {
-      console.error("Error liking challenge:", error);
-      toast.error("Support feature is currently unavailable.");
-    }
-  };
+  //     setLiked(true);
+  //     setLikeCount((prev) => prev + 1);
+  //     toast.success("You have supported this challenge!");
+  //   } catch (error) {
+  //     console.error("Error liking challenge:", error);
+  //     toast.error("Support feature is currently unavailable.");
+  //   }
+  // };
 
   // 천 단위 쉼표 포맷팅 함수
   const formatMoney = (amount) => {
@@ -342,7 +342,18 @@ const DetailHero = ({ challenge, challengeId }) => {
               alt={challenge.title}
               className="w-full h-full object-cover"
             />
-            <Badge className="absolute top-4 right-4 bg-green-500">
+            <Badge
+              className={clsx(
+                "absolute top-4 right-4",
+                challenge.status === "In Progress"
+                  ? "bg-green-500"
+                  : challenge.status === "Completed"
+                  ? "bg-sky-500"
+                  : challenge.status === "Fallen"
+                  ? "bg-yellow-500"
+                  : "bg-green-500"
+              )}
+            >
               {challenge.status}
             </Badge>
 

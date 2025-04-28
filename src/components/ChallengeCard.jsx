@@ -6,7 +6,7 @@ import { Heart } from "lucide-react";
 function ChallengeCard({ challenge }) {
   const statusColors = {
     "In Progress": "bg-green-500",
-    Completed: "bg-blue-500",
+    Completed: "bg-sky-500",
     Fallen: "bg-yellow-500",
   };
 

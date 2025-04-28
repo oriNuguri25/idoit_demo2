@@ -57,6 +57,19 @@ export default async function handler(req, res) {
 
       console.log("삽입할 데이터:", supportData);
 
+      // 해당 챌린지 정보 조회
+      const { data: challengeData, error: challengeError } = await supabase
+        .from("challenges")
+        .select("money, progress")
+        .eq("id", challengeId)
+        .single();
+
+      if (challengeError) {
+        console.error("챌린지 조회 오류:", challengeError);
+      } else {
+        console.log("조회된 챌린지 정보:", challengeData);
+      }
+
       // 더 명시적인 방식으로 insert 쿼리 시도
       try {
         // 테이블 존재 여부 확인 (디버깅용)
@@ -93,6 +106,53 @@ export default async function handler(req, res) {
             console.error("오류 세부 정보:", JSON.stringify(insertError));
           } else {
             console.log("Supabase 삽입 성공!");
+
+            // 해당 챌린지의 모든 후원금 합계 조회
+            const { data: totalSupportData, error: totalSupportError } =
+              await supabase
+                .from("supports")
+                .select("amount")
+                .eq("challenge_id", challengeId);
+
+            if (!totalSupportError && totalSupportData) {
+              // 총 후원 금액 계산
+              const totalAmount = totalSupportData.reduce(
+                (sum, item) => sum + item.amount,
+                0
+              );
+              console.log(`총 누적 후원 금액: ${totalAmount}$`);
+
+              // 챌린지 목표 금액
+              const targetAmount = challengeData?.money || 0;
+
+              // 진행률 계산 - 목표액이 0이면 100%, 아니면 후원액/목표액 비율
+              let progress = 0;
+              if (targetAmount <= 0) {
+                progress = 100;
+              } else {
+                // 후원금이 목표를 초과해도 진행률은 실제 % 표시
+                progress = Math.round((totalAmount / targetAmount) * 100);
+              }
+
+              console.log(`목표 금액: ${targetAmount}$, 진행률: ${progress}%`);
+
+              // 챌린지 업데이트
+              const { error: updateError } = await supabase
+                .from("challenges")
+                .update({
+                  collected_amount: totalAmount, // 수집된 총 금액
+                  progress: progress, // 진행률 업데이트
+                })
+                .eq("id", challengeId);
+
+              if (updateError) {
+                console.error("챌린지 업데이트 오류:", updateError);
+              } else {
+                console.log("챌린지 후원 정보 업데이트 성공!");
+              }
+            } else {
+              console.error("총 후원금 조회 오류:", totalSupportError);
+            }
           }
         } catch (insertError) {
           console.error("Supabase 예외 발생 (무시됨):", insertError);

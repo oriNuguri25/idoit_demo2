@@ -1,9 +1,10 @@
 import ChallengeCard from "@/components/ChallengeCard";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Heart, Trophy } from "lucide-react";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "@/components/ui/sonner";
+import { createClient } from "@supabase/supabase-js";
 
 const CACHE_EXPIRY_TIME = 5 * 60 * 1000; // 5분 캐시 만료
 
@@ -20,10 +21,79 @@ const Challenges = () => {
     fallen: 0,
   });
 
+  // Supabase 관련 ref 추가
+  const supabaseRef = useRef(null);
+  const challengesSubscriptionRef = useRef(null);
+
   // API URL 설정
   const apiUrl = import.meta.env.DEV
     ? "http://localhost:5173"
     : "https://idoitproto.vercel.app";
+
+  // Supabase 클라이언트 초기화 및 실시간 구독 설정
+  useEffect(() => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    if (supabaseUrl && supabaseAnonKey) {
+      supabaseRef.current = createClient(supabaseUrl, supabaseAnonKey);
+      console.log("Supabase client initialized for challenges");
+
+      // 실시간 구독 설정
+      setupChallengesSubscription();
+    } else {
+      console.warn(
+        "Supabase credentials not found, real-time updates disabled"
+      );
+    }
+
+    return () => {
+      // 구독 정리
+      if (challengesSubscriptionRef.current) {
+        challengesSubscriptionRef.current.unsubscribe();
+      }
+    };
+  }, []);
+
+  // 챌린지 테이블 변경사항 구독 함수
+  const setupChallengesSubscription = () => {
+    if (!supabaseRef.current) return;
+
+    // 이전 구독 해제
+    if (challengesSubscriptionRef.current) {
+      challengesSubscriptionRef.current.unsubscribe();
+    }
+
+    // 새 구독 설정
+    challengesSubscriptionRef.current = supabaseRef.current
+      .channel("challenges-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*", // INSERT, UPDATE, DELETE 모두 감지
+          schema: "public",
+          table: "challenges",
+        },
+        (payload) => {
+          console.log("Real-time challenge update:", payload);
+
+          // 변경 이벤트 유형에 따라 다른 처리
+          if (payload.eventType === "INSERT") {
+            toast.info("새로운 도전이 추가되었습니다!");
+            refreshAllData();
+          } else if (payload.eventType === "UPDATE") {
+            toast.info("도전 정보가 업데이트되었습니다!");
+            refreshAllData();
+          } else if (payload.eventType === "DELETE") {
+            toast.info("도전이 삭제되었습니다!");
+            refreshAllData();
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log("Challenges subscription status:", status);
+      });
+  };
 
   // 향상된 fetch 함수
   const fetchWithErrorHandling = async (url, label) => {
@@ -224,13 +294,13 @@ const Challenges = () => {
 
     fetchData();
 
-    // 15분마다 데이터 갱신 (백그라운드에서)
+    // 실시간 업데이트가 있으므로 주기적인 폴링 간격을 늘림 (30분)
     const intervalId = setInterval(() => {
       console.log("Background data refresh");
       fetchPopularChallenges(true);
       fetchTodaysChallenge(true);
       fetchFallenChallenges(true);
-    }, 15 * 60 * 1000);
+    }, 30 * 60 * 1000);
 
     return () => clearInterval(intervalId);
   }, [
@@ -381,7 +451,7 @@ const Challenges = () => {
             See more <ArrowRight size={16} />
           </Link>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
           {isLoading ? (
             <p>Loading fallen challenges...</p>
           ) : fallenChallenges.length > 0 ? (
