@@ -421,7 +421,7 @@ const Challenges = () => {
                 </h3>
               </div>
               <p className="text-gray-700 mb-3">
-                Art should be for everyone—but galleries often feel
+                Art should be for everyone but galleries often feel
                 intimidating, distant, and exclusive. This challenge stood out
                 because it broke those barriers with something wonderfully
                 simple and foolish: an outdoor gallery open to anyone, without
@@ -437,7 +437,7 @@ const Challenges = () => {
                 some heartfelt—but every one of them mattered. The challenge
                 reached 110% of its funding goal, proving that when you make
                 space for open creativity, people show up. It wasn’t about
-                perfection—it was about connection, laughter, and courage.
+                perfection it was about connection, laughter, and courage.
                 That’s exactly the kind of idiot spirit we celebrate.
               </p>
             </div>
