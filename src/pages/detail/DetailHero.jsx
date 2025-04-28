@@ -716,12 +716,6 @@ const DetailHero = ({ challenge, challengeId }) => {
                 />
               </div>
             </div>
-
-            <div className="text-xs text-right text-gray-500 mt-2">
-              {totalRaised > 0 && (
-                <span>From {Math.ceil(totalRaised / 5)} supporters</span>
-              )}
-            </div>
           </div>
         )}
 
