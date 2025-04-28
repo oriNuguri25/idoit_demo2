@@ -421,18 +421,24 @@ const Challenges = () => {
                 </h3>
               </div>
               <p className="text-gray-700 mb-3">
-                This challenge stands out for its combination of physical
-                endurance and mental discipline. Waking up at 5 AM consistently
-                requires breaking deeply ingrained sleep habits, while swimming
-                in the ocean adds an element of courage and connection with
-                nature.
+                Art should be for everyone—but galleries often feel
+                intimidating, distant, and exclusive. This challenge stood out
+                because it broke those barriers with something wonderfully
+                simple and foolish: an outdoor gallery open to anyone, without
+                critics or pressure. Building a waterproof box and inviting
+                neighbors to hang up doodles, sketches, and paintings was not
+                just a project; it was an act of brave belief in community
+                creativity. It dared to imagine that even messy, imperfect art
+                could bring people closer together.
               </p>
               <p className="text-gray-700">
-                The challenger has shown remarkable dedication, documenting each
-                day with authentic photos and honest reflections about the
-                struggles and small victories. Their journey reminds us that the
-                most meaningful growth often comes from the most uncomfortable
-                challenges.
+                And it worked. Piece by piece, the little gallery filled with
+                the spirit of the neighborhood. Some contributions were silly,
+                some heartfelt—but every one of them mattered. The challenge
+                reached 110% of its funding goal, proving that when you make
+                space for open creativity, people show up. It wasn’t about
+                perfection—it was about connection, laughter, and courage.
+                That’s exactly the kind of idiot spirit we celebrate.
               </p>
             </div>
           </div>
