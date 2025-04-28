@@ -62,7 +62,8 @@ export default async function handler(req, res) {
             .from("challenges")
             .select("*")
             .eq("status", "Fallen")
-            .order("created_at", { ascending: false });
+            .order("created_at", { ascending: false })
+            .limit(5); // 최대 5개까지 제한 추가
 
           if (fallenError) {
             console.error("실패한 챌린지 조회 오류:", fallenError);
@@ -71,41 +72,25 @@ export default async function handler(req, res) {
           console.log("실패한 챌린지 조회 결과:", fallenData?.length || 0);
           return res.status(200).json(fallenData);
 
-        // 오늘의 챌린지 조회 - 오늘 생성된 도전
+        // 오늘의 챌린지 조회 - 좋아요가 가장 많은 도전
         case "today":
-          console.log("오늘의 챌린지 조회 시작");
-          // 오늘 날짜 설정 (UTC 기준)
-          const today = new Date();
-          today.setUTCHours(0, 0, 0, 0);
+          console.log("오늘의 챌린지(가장 인기있는 챌린지) 조회 시작");
 
-          // 내일 날짜 설정
-          const tomorrow = new Date(today);
-          tomorrow.setDate(tomorrow.getDate() + 1);
-
-          console.log(
-            "날짜 범위:",
-            today.toISOString(),
-            "~",
-            tomorrow.toISOString()
-          );
-
-          // 오늘 생성된 챌린지 조회
-          const { data: todayData, error: todayError } = await supabase
+          // 좋아요가 가장 많은 챌린지를 오늘의 챌린지로 선택
+          const { data: mostLikedData, error: mostLikedError } = await supabase
             .from("challenges")
             .select("*")
-            .gte("created_at", today.toISOString())
-            .lt("created_at", tomorrow.toISOString());
+            .neq("status", "Fallen")
+            .order("likes", { ascending: false })
+            .limit(1);
 
-          if (todayError) {
-            console.error("오늘의 챌린지 조회 오류:", todayError);
-            throw todayError;
+          if (mostLikedError) {
+            console.error("가장 인기있는 챌린지 조회 오류:", mostLikedError);
+            throw mostLikedError;
           }
 
-          console.log("오늘 생성된 챌린지 개수:", todayData?.length || 0);
-
-          if (todayData.length === 0) {
-            // 오늘 생성된 챌린지가 없는 경우 가장 최근 챌린지 반환
-            console.log("오늘 생성된 챌린지 없음, 최근 챌린지 조회");
+          if (mostLikedData.length === 0) {
+            console.log("인기있는 챌린지가 없음, 최근 챌린지 조회");
             const { data: recentData, error: recentError } = await supabase
               .from("challenges")
               .select("*")
@@ -119,13 +104,11 @@ export default async function handler(req, res) {
             console.log("최근 챌린지:", recentData[0]?.id || "없음");
             return res.status(200).json(recentData[0] || null);
           } else {
-            // 오늘 생성된 챌린지 중 무작위로 1개 선택
-            const randomIndex = Math.floor(Math.random() * todayData.length);
             console.log(
-              "선택된 오늘의 챌린지:",
-              todayData[randomIndex]?.id || "없음"
+              "선택된 가장 인기있는 챌린지:",
+              mostLikedData[0]?.id || "없음"
             );
-            return res.status(200).json(todayData[randomIndex]);
+            return res.status(200).json(mostLikedData[0]);
           }
 
         // 기본: 모든 챌린지 조회 (최신순으로 정렬)

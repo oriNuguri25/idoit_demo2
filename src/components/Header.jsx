@@ -5,7 +5,7 @@ const Header = () => {
   return (
     <header className="container mx-auto p-4 flex justify-between items-center">
       <Link to="/" className="flex items-center gap-2">
-        <span className="font-bold text-purple-700 text-xl">Idoit</span>
+        <span className="font-bold text-black-700 text-xl">Idoit</span>
       </Link>
       <Link
         to="#"

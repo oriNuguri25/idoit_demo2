@@ -387,7 +387,7 @@ const Challenges = () => {
                   alt={todaysChallenge.title}
                   className="w-full h-full object-cover"
                 />
-                <Badge className="absolute top-4 right-4 bg-yellow-500">
+                <Badge className="absolute top-4 right-4 bg-green-500">
                   {todaysChallenge.status}
                 </Badge>
               </div>
