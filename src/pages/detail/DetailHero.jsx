@@ -44,6 +44,8 @@ const DetailHero = ({ challenge, challengeId }) => {
   const supabaseRef = useRef(null);
   const commentsSubscriptionRef = useRef(null);
   const supportsSubscriptionRef = useRef(null);
+  const [isDonating, setIsDonating] = useState(false);
+  const [isCommenting, setIsCommenting] = useState(false);
 
   // API URL 설정
   const apiUrl = import.meta.env.DEV
@@ -285,8 +287,9 @@ const DetailHero = ({ challenge, challengeId }) => {
   };
 
   const handleCommentSubmit = async () => {
+    if (isCommenting) return; // 중복 방지
     if (!commentInput.trim() || !challengeId) return;
-
+    setIsCommenting(true);
     try {
       console.log(`Comment post URL: ${apiUrl}/api/comments`);
 
@@ -315,10 +318,14 @@ const DetailHero = ({ challenge, challengeId }) => {
     } catch (error) {
       console.error("Error posting comment:", error);
       toast.error("An error occurred while posting your comment.");
+    } finally {
+      setIsCommenting(false);
     }
   };
 
   const handleDonate = async () => {
+    if (isDonating) return; // 이미 처리 중이면 무시
+    setIsDonating(true);
     try {
       // 후원 금액 결정
       let finalAmount = donationAmount;
@@ -326,6 +333,7 @@ const DetailHero = ({ challenge, challengeId }) => {
         finalAmount = customAmount;
         if (!finalAmount || parseFloat(finalAmount) <= 0) {
           toast.error("Please enter a valid donation amount.");
+          setIsDonating(false); // 유효성 실패 시 바로 해제
           return;
         }
       }
@@ -366,26 +374,22 @@ const DetailHero = ({ challenge, challengeId }) => {
 
       // 후원 정보 새로고침 - 성공 후 직접 호출하여 데이터 갱신 보장
       console.log("후원 성공 후 데이터 새로고침 시작");
-
-      // 즉시 한 번 실행
       fetchSupportInfo();
-
-      // 약간의 지연 후 다시 실행 (첫 번째 시도)
       setTimeout(() => {
         console.log("후원 첫 번째 지연 새로고침 시도");
         fetchSupportInfo();
-      }, 2000); // 2초 후
-
-      // 더 긴 지연 후 다시 실행 (두 번째 시도)
+      }, 2000);
       setTimeout(() => {
         console.log("후원 두 번째 지연 새로고침 시도");
         fetchSupportInfo();
-      }, 5000); // 5초 후
+      }, 5000);
     } catch (error) {
       console.error("후원 처리 오류:", error);
       toast.error(
         error.message || "An error occurred while processing your donation."
       );
+    } finally {
+      setIsDonating(false);
     }
   };
 
