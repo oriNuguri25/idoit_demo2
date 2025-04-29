@@ -434,7 +434,7 @@ const Challenges = () => {
               <p className="text-gray-700">
                 And it worked. Piece by piece, the little gallery filled with
                 the spirit of the neighborhood. Some contributions were silly,
-                some heartfelt—but every one of them mattered. The challenge
+                some heartfelt but every one of them mattered. The challenge
                 reached 110% of its funding goal, proving that when you make
                 space for open creativity, people show up. It wasn’t about
                 perfection it was about connection, laughter, and courage.

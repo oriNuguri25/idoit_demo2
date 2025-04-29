@@ -8,7 +8,7 @@ const Header = () => {
         <span className="font-bold text-black-700 text-xl">Idoit</span>
       </Link>
       <Link
-        to="#"
+        to="/about"
         className="text-purple-700 hover:text-purple-900 font-medium"
       >
         About Us
